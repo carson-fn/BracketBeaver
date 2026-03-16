@@ -22,3 +22,8 @@ app.get("/", (req, res) => {
 app.get("/api/hello", (req, res) => {
     res.json({message: "Hello world!"});
 })
+
+app.post("/api/login", (req, res) => {
+    const {username, password} = req.body();
+    res.json({message: "login"});
+})
