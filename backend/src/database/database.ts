@@ -1,9 +1,12 @@
 import { Pool } from "pg";
 
+// Load environment variables from .env file only in development mode
+if (process.env.NODE_ENV !== "production") {
+  const dotenv = await import("dotenv");
+  dotenv.config();
+}
+
+// DB connection pool
 export const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "bracket_beaver",
-  password: "password",
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,
 });
