@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import authRoutes from "./routes/authRoute.js";
 
 
 const app = express();
@@ -10,6 +11,8 @@ app.use(
         origin: ["http://localhost:5173"],
     })
 )
+
+app.use(express.json());
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
@@ -23,7 +26,4 @@ app.get("/api/hello", (req, res) => {
     res.json({message: "Hello world!"});
 })
 
-app.post("/api/login", (req, res) => {
-    const {username, password} = req.body();
-    res.json({message: "login"});
-})
+app.use("/api", authRoutes);
