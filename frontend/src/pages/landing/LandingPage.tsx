@@ -15,6 +15,10 @@ function LandingPage() {
     navigate("/login");
   };
 
+  const handleGemini = () => {
+    navigate("/llm-demo");
+  };
+
   return (
     <div className="landing-page">
       <h1 className="landing-title">Bracket Beaver</h1>
@@ -24,6 +28,10 @@ function LandingPage() {
 
       <button className="landing-button" onClick={handleGuest}>
         Continue as Guest
+      </button>
+
+      <button className="landing-button" onClick={handleGemini}>
+        Try Gemini
       </button>
 
       <button className="landing-button" onClick={handleLogin}>
