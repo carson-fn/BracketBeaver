@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoute.js";
+import tournamentRoutes from "./routes/tournamentRoute.js";
 
 
 const app = express();
@@ -27,3 +28,4 @@ app.get("/api/hello", (req, res) => {
 })
 
 app.use("/api", authRoutes);
+app.use("/api", tournamentRoutes);
