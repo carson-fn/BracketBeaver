@@ -24,10 +24,34 @@ const sanitizeList = (items: string[]): string[] => {
     .filter((item) => item.length > 0);
 };
 
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+const isValidYyyyMmDd = (value: string): boolean => {
+  if (!DATE_REGEX.test(value)) return false;
+
+  // Use Date parsing to ensure the date actually exists (e.g. reject 2024-02-30).
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return false;
+
+  // Ensure no overflow (e.g. 2024-13-01) by comparing the ISO prefix.
+  return date.toISOString().startsWith(value);
+};
+
 const validateCreatePayload = (payload: CreateTournamentPayload): string | null => {
   if (!payload.name.trim()) return "Tournament name is required.";
   if (!payload.sport.trim()) return "Sport is required.";
   if (!payload.startDate || !payload.endDate) return "Start and end dates are required.";
+
+  if (!isValidYyyyMmDd(payload.startDate) || !isValidYyyyMmDd(payload.endDate)) {
+    return "Start and end dates must be valid dates in YYYY-MM-DD format.";
+  }
+
+  const start = new Date(`${payload.startDate}T00:00:00Z`);
+  const end = new Date(`${payload.endDate}T00:00:00Z`);
+  if (end.getTime() < start.getTime()) {
+    return "End date cannot be before start date.";
+  }
+
   if (!Number.isInteger(payload.createdBy) || payload.createdBy <= 0) {
     return "createdBy must be a positive integer.";
   }
