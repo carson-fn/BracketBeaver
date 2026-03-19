@@ -144,8 +144,39 @@ const generateRoundRobinPairings = (teamIds: number[]): Pairing[][] => {
 };
 
 const buildRoundStartTime = (startDate: string, roundIndex: number): Date => {
-  const [year, month, day] = startDate.split("-").map(Number);
+  const parts = startDate.split("-");
+  if (parts.length !== 3) {
+    throw new Error(
+      `Invalid startDate '${startDate}'; expected format YYYY-MM-DD.`
+    );
+  }
+
+  const [yearRaw, monthRaw, dayRaw] = parts;
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    throw new Error(
+      `Invalid startDate '${startDate}'; expected format YYYY-MM-DD with a valid calendar date.`
+    );
+  }
+
   const base = new Date(Date.UTC(year, month - 1, day, 10, 0, 0, 0));
+  if (Number.isNaN(base.getTime())) {
+    throw new Error(
+      `Invalid startDate '${startDate}'; could not construct a valid Date.`
+    );
+  }
+
   base.setUTCDate(base.getUTCDate() + roundIndex);
   return base;
 };
