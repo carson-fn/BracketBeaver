@@ -51,8 +51,12 @@ export const createTournamentHandler = async (req: Request, res: Response) => {
       tournamentId: result.tournamentId,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Server error";
-    return res.status(400).json({ success: false, message });
+    // Log the underlying error for diagnostics, but do not expose details to the client.
+    console.error("Failed to create tournament:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
@@ -82,9 +86,19 @@ export const generateScheduleHandler = async (req: Request, res: Response) => {
       generatedMatches: result.generatedMatches,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Server error";
-    const statusCode = message === "Tournament not found." ? 404 : 400;
-    return res.status(statusCode).json({ success: false, message });
+    if (error instanceof Error && error.message === "Tournament not found.") {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    // Log unexpected errors and return a generic server error response.
+    console.error("Failed to generate tournament schedule:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
@@ -114,7 +128,8 @@ export const getScheduleHandler = async (req: Request, res: Response) => {
       success: true,
       schedule,
     });
-  } catch {
+  } catch (error) {
+    console.error("Failed to get tournament schedule:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
