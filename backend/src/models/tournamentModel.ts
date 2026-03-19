@@ -24,6 +24,8 @@ export type VenueRow = {
 export type TournamentScheduleContext = {
   tournamentId: number;
   startDate: string;
+  endDate: string;
+  bracketType: string;
   teams: TeamRow[];
   venues: VenueRow[];
 };
@@ -105,8 +107,13 @@ export const createTournamentWithDetails = async (
 export const getTournamentScheduleContext = async (
   tournamentId: number
 ): Promise<TournamentScheduleContext | null> => {
-  const tournamentResult = await pool.query<{ tournamentid: number; start_date: string }>(
-    `SELECT tournamentID, start_date
+  const tournamentResult = await pool.query<{
+    tournamentid: number;
+    start_date: string;
+    end_date: string;
+    bracket_type: string;
+  }>(
+    `SELECT tournamentID, start_date, end_date, bracket_type
      FROM tournaments
      WHERE tournamentID = $1`,
     [tournamentId]
@@ -141,6 +148,8 @@ export const getTournamentScheduleContext = async (
   return {
     tournamentId,
     startDate: tournamentRow.start_date,
+    endDate: tournamentRow.end_date,
+    bracketType: tournamentRow.bracket_type,
     teams: teamsResult.rows,
     venues: venuesResult.rows,
   };
