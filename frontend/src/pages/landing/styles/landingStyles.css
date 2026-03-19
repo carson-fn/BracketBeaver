@@ -5,6 +5,10 @@ body {
 
 .landing-page {
   text-align: center;
+  display: grid;
+  grid-template-rows: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 50px;
   margin-top: 100px;
 }
 
@@ -37,4 +41,10 @@ body {
 .landing-message {
   margin-top: 20px;
   color: #3E2C23;
+}
+
+.landing-page img {
+  width: 350px;
+  height: 250px;
+  object-fit: cover;
 }
