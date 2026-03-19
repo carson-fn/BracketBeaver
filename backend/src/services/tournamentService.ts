@@ -230,12 +230,14 @@ export const generateTournamentSchedule = async (
 
       const slotOffset = Math.floor(pairingIndex / context.venues.length);
       const matchTimestamp = new Date(
-        roundStart.getUTCFullYear(),
-        roundStart.getUTCMonth(),
-        roundStart.getUTCDate(),
-        roundStart.getUTCHours() + slotOffset * 2,
-        roundStart.getUTCMinutes(),
-        roundStart.getUTCSeconds()
+        Date.UTC(
+          roundStart.getUTCFullYear(),
+          roundStart.getUTCMonth(),
+          roundStart.getUTCDate(),
+          roundStart.getUTCHours() + slotOffset * 2,
+          roundStart.getUTCMinutes(),
+          roundStart.getUTCSeconds()
+        )
       );
 
       const isoString = matchTimestamp.toISOString();
