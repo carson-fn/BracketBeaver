@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoute.js";
 import tournamentRoutes from "./routes/tournamentRoute.js";
+import { ensureDatabaseSchema } from "./database/database.js";
 
 
 const app = express();
@@ -15,10 +16,6 @@ app.use(
 
 app.use(express.json());
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-})
-
 app.get("/", (req, res) => {
     res.send("Welcome to the server!");
 })
@@ -29,3 +26,16 @@ app.get("/api/hello", (req, res) => {
 
 app.use("/api", authRoutes);
 app.use("/api", tournamentRoutes);
+
+const startServer = async () => {
+    await ensureDatabaseSchema();
+
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+};
+
+startServer().catch((error) => {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+});

@@ -1,11 +1,20 @@
+import type { PoolClient } from "pg";
 import {
+  clearTournamentMatchesWithExecutor,
   createTournamentWithDetails,
-  getScheduleByTournament,
+  getBracketByTournament,
+  getMatchById,
   getTournamentScheduleContext,
-  replaceTournamentSchedule,
+  insertTournamentMatch,
+  findDependentMatch,
+  resetMatchOutcome,
+  saveMatchResult,
+  setMatchParticipant,
   type CreateTournamentInput,
+  type BracketMatchRow,
   type ScheduledMatchInsert,
 } from "../models/tournamentModel.js";
+import { pool } from "../database/database.js";
 
 export type CreateTournamentPayload = {
   name: string;
@@ -97,6 +106,10 @@ type Pairing = {
   awayTeamId: number;
 };
 
+type TeamSlot = {
+  teamId: number | null;
+};
+
 const generateRoundRobinPairings = (teamIds: number[]): Pairing[][] => {
   const ids = [...teamIds];
 
@@ -181,6 +194,20 @@ const buildRoundStartTime = (startDate: string, roundIndex: number): Date => {
   return base;
 };
 
+const normalizeDateString = (value: string | Date): string => {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  const isoDate = value.toISOString().split("T")[0];
+
+  if (!isoDate) {
+    throw new Error("Invalid start date format.");
+  }
+
+  return isoDate;
+};
+
 export const generateTournamentSchedule = async (
   tournamentId: number
 ): Promise<{ generatedMatches: number }> => {
@@ -198,69 +225,405 @@ export const generateTournamentSchedule = async (
     throw new Error("Tournament requires at least 1 venue.");
   }
 
-  // Determine bracket type, if available, and reject unsupported types.
-  const bracketType = (context as { bracketType?: string }).bracketType;
-  if (bracketType && bracketType !== "round_robin") {
-    throw new Error(
-      `Schedule generation not supported for bracket type: ${bracketType}`
-    );
+  const startDateStr = normalizeDateString(context.startDate);
+
+  if (context.bracketType === "round_robin") {
+    return generateRoundRobinSchedule(tournamentId, startDateStr, context.teams.map((team) => team.teamid), context.venues.map((venue) => venue.venueid));
   }
 
-  let startDateStr = context.startDate;
-  if (typeof startDateStr !== "string") {
-    if (startDateStr instanceof Date) {
-      startDateStr = startDateStr.toISOString().split("T")[0];
-    } else {
-      throw new Error("Invalid start date format.");
-    }
+  if (context.bracketType === "single_elimination") {
+    return generateSingleEliminationBracket(tournamentId, startDateStr, context.teams.map((team) => team.teamid), context.venues.map((venue) => venue.venueid));
   }
 
-  const rounds = generateRoundRobinPairings(context.teams.map((team) => team.teamid));
-  const matches: ScheduledMatchInsert[] = [];
-
-  rounds.forEach((roundPairings, roundIndex) => {
-    const roundStart = buildRoundStartTime(startDateStr, roundIndex);
-
-    roundPairings.forEach((pairing, pairingIndex) => {
-      const venue = context.venues[pairingIndex % context.venues.length];
-
-      if (!venue) {
-        throw new Error("Tournament requires at least 1 venue.");
-      }
-
-      const slotOffset = Math.floor(pairingIndex / context.venues.length);
-      const matchTimestamp = new Date(
-        Date.UTC(
-          roundStart.getUTCFullYear(),
-          roundStart.getUTCMonth(),
-          roundStart.getUTCDate(),
-          roundStart.getUTCHours() + slotOffset * 2,
-          roundStart.getUTCMinutes(),
-          roundStart.getUTCSeconds()
-        )
-      );
-
-      const isoString = matchTimestamp.toISOString();
-      if (!isoString || isoString.includes("NaN")) {
-        throw new Error(`Failed to build valid timestamp for match in round ${roundIndex + 1}`);
-      }
-
-      matches.push({
-        tournamentId,
-        roundNumber: roundIndex + 1,
-        homeTeamId: pairing.homeTeamId,
-        awayTeamId: pairing.awayTeamId,
-        venueId: venue.venueid,
-        matchTime: isoString,
-      });
-    });
-  });
-
-  await replaceTournamentSchedule(tournamentId, matches);
-
-  return { generatedMatches: matches.length };
+  throw new Error(`Unsupported bracket type: ${context.bracketType}`);
 };
 
 export const getTournamentSchedule = async (tournamentId: number) => {
-  return getScheduleByTournament(tournamentId);
+  return getBracketByTournament(tournamentId);
+};
+
+const buildMatchTimestamp = (
+  startDate: string,
+  roundIndex: number,
+  slotOffset: number
+): string => {
+  const roundStart = buildRoundStartTime(startDate, roundIndex);
+  const matchTimestamp = new Date(
+    Date.UTC(
+      roundStart.getUTCFullYear(),
+      roundStart.getUTCMonth(),
+      roundStart.getUTCDate(),
+      roundStart.getUTCHours() + slotOffset * 2,
+      roundStart.getUTCMinutes(),
+      roundStart.getUTCSeconds()
+    )
+  );
+
+  return matchTimestamp.toISOString();
+};
+
+const nextPowerOfTwo = (value: number): number => {
+  let power = 1;
+
+  while (power < value) {
+    power *= 2;
+  }
+
+  return power;
+};
+
+const buildSeedOrder = (size: number): number[] => {
+  let seeds = [1];
+
+  while (seeds.length < size) {
+    const nextSize = seeds.length * 2;
+    const mirror = nextSize + 1;
+    seeds = seeds.flatMap((seed) => [seed, mirror - seed]);
+  }
+
+  return seeds;
+};
+
+const getEliminationRoundLabel = (totalRounds: number, roundNumber: number): string => {
+  const matchesInRound = 2 ** (totalRounds - roundNumber);
+
+  if (matchesInRound === 1) return "Final";
+  if (matchesInRound === 2) return "Semifinal";
+  if (matchesInRound === 4) return "Quarterfinal";
+
+  return `Round ${roundNumber}`;
+};
+
+const clearDependentBranch = async (
+  tournamentId: number,
+  sourceMatchId: number,
+  client: PoolClient
+): Promise<void> => {
+  const dependentMatch = await findDependentMatch(tournamentId, sourceMatchId, client);
+
+  if (!dependentMatch) {
+    return;
+  }
+
+  const side = dependentMatch.home_source_match_id === sourceMatchId ? "home" : "away";
+  await setMatchParticipant(dependentMatch.matchid, side, null, client);
+  await resetMatchOutcome(dependentMatch.matchid, client);
+  await clearDependentBranch(tournamentId, dependentMatch.matchid, client);
+};
+
+const propagateWinnerToNextMatch = async (
+  tournamentId: number,
+  sourceMatchId: number,
+  winnerTeamId: number,
+  client: PoolClient
+): Promise<void> => {
+  const dependentMatch = await findDependentMatch(tournamentId, sourceMatchId, client);
+
+  if (!dependentMatch) {
+    return;
+  }
+
+  const side = dependentMatch.home_source_match_id === sourceMatchId ? "home" : "away";
+  const existingTeamId = side === "home" ? dependentMatch.home_team_id : dependentMatch.away_team_id;
+
+  if (existingTeamId === winnerTeamId) {
+    return;
+  }
+
+  await setMatchParticipant(dependentMatch.matchid, side, winnerTeamId, client);
+  await resetMatchOutcome(dependentMatch.matchid, client);
+  await clearDependentBranch(tournamentId, dependentMatch.matchid, client);
+};
+
+const generateRoundRobinSchedule = async (
+  tournamentId: number,
+  startDate: string,
+  teamIds: number[],
+  venueIds: number[]
+): Promise<{ generatedMatches: number }> => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    await clearTournamentMatchesWithExecutor(tournamentId, client);
+
+    const rounds = generateRoundRobinPairings(teamIds);
+    let generatedMatches = 0;
+
+    for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
+      const roundPairings = rounds[roundIndex] ?? [];
+
+      for (let pairingIndex = 0; pairingIndex < roundPairings.length; pairingIndex++) {
+        const pairing = roundPairings[pairingIndex];
+        const venueId = venueIds[pairingIndex % venueIds.length];
+
+        if (!pairing || venueId === undefined) {
+          continue;
+        }
+
+        const slotOffset = Math.floor(pairingIndex / venueIds.length);
+
+        await insertTournamentMatch(
+          {
+            tournamentId,
+            roundNumber: roundIndex + 1,
+            slotNumber: pairingIndex + 1,
+            matchLabel: `Round ${roundIndex + 1} Match ${pairingIndex + 1}`,
+            homeTeamId: pairing.homeTeamId,
+            awayTeamId: pairing.awayTeamId,
+            homeSourceMatchId: null,
+            awaySourceMatchId: null,
+            winnerTeamId: null,
+            venueId,
+            matchTime: buildMatchTimestamp(startDate, roundIndex, slotOffset),
+            homeScore: null,
+            awayScore: null,
+            status: "pending",
+          },
+          client
+        );
+
+        generatedMatches += 1;
+      }
+    }
+
+    await client.query("COMMIT");
+    return { generatedMatches };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const generateSingleEliminationBracket = async (
+  tournamentId: number,
+  startDate: string,
+  teamIds: number[],
+  venueIds: number[]
+): Promise<{ generatedMatches: number }> => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    await clearTournamentMatchesWithExecutor(tournamentId, client);
+
+    const bracketSize = nextPowerOfTwo(teamIds.length);
+    const totalRounds = Math.log2(bracketSize);
+    const seededOrder = buildSeedOrder(bracketSize);
+    const seededTeams: TeamSlot[] = seededOrder.map((seed) => ({
+      teamId: teamIds[seed - 1] ?? null,
+    }));
+
+    let previousRoundMatchIds: number[] = [];
+    const autoWinners: Array<{ matchId: number; winnerTeamId: number }> = [];
+    let generatedMatches = 0;
+
+    for (let roundNumber = 1; roundNumber <= totalRounds; roundNumber++) {
+      const matchesInRound = 2 ** (totalRounds - roundNumber);
+      const currentRoundMatchIds: number[] = [];
+      const roundLabel = getEliminationRoundLabel(totalRounds, roundNumber);
+
+      for (let slotIndex = 0; slotIndex < matchesInRound; slotIndex++) {
+        const venueId = venueIds[slotIndex % venueIds.length];
+
+        if (venueId === undefined) {
+          throw new Error("Tournament requires at least 1 venue.");
+        }
+
+        const slotOffset = Math.floor(slotIndex / venueIds.length);
+        let homeTeamId: number | null = null;
+        let awayTeamId: number | null = null;
+        let homeSourceMatchId: number | null = null;
+        let awaySourceMatchId: number | null = null;
+        let winnerTeamId: number | null = null;
+        let status: "pending" | "completed" = "pending";
+
+        if (roundNumber === 1) {
+          homeTeamId = seededTeams[slotIndex * 2]?.teamId ?? null;
+          awayTeamId = seededTeams[slotIndex * 2 + 1]?.teamId ?? null;
+
+          if (homeTeamId !== null && awayTeamId === null) {
+            winnerTeamId = homeTeamId;
+            status = "completed";
+          } else if (homeTeamId === null && awayTeamId !== null) {
+            winnerTeamId = awayTeamId;
+            status = "completed";
+          }
+        } else {
+          homeSourceMatchId = previousRoundMatchIds[slotIndex * 2] ?? null;
+          awaySourceMatchId = previousRoundMatchIds[slotIndex * 2 + 1] ?? null;
+        }
+
+        const matchId = await insertTournamentMatch(
+          {
+            tournamentId,
+            roundNumber,
+            slotNumber: slotIndex + 1,
+            matchLabel: `${roundLabel} ${slotIndex + 1}`,
+            homeTeamId,
+            awayTeamId,
+            homeSourceMatchId,
+            awaySourceMatchId,
+            winnerTeamId,
+            venueId,
+            matchTime: buildMatchTimestamp(startDate, roundNumber - 1, slotOffset),
+            homeScore: null,
+            awayScore: null,
+            status,
+          },
+          client
+        );
+
+        if (winnerTeamId !== null) {
+          autoWinners.push({ matchId, winnerTeamId });
+        }
+
+        currentRoundMatchIds.push(matchId);
+        generatedMatches += 1;
+      }
+
+      previousRoundMatchIds = currentRoundMatchIds;
+    }
+
+    for (const autoWinner of autoWinners) {
+      await propagateWinnerToNextMatch(
+        tournamentId,
+        autoWinner.matchId,
+        autoWinner.winnerTeamId,
+        client
+      );
+    }
+
+    await client.query("COMMIT");
+    return { generatedMatches };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const buildRoundName = (
+  bracketType: string,
+  roundNumber: number,
+  totalRounds: number
+): string => {
+  if (bracketType === "single_elimination") {
+    return getEliminationRoundLabel(totalRounds, roundNumber);
+  }
+
+  return `Round ${roundNumber}`;
+};
+
+export const getTournamentBracket = async (tournamentId: number) => {
+  const context = await getTournamentScheduleContext(tournamentId);
+
+  if (!context) {
+    throw new Error("Tournament not found.");
+  }
+
+  const matches = await getBracketByTournament(tournamentId);
+  const totalRounds = matches.reduce((max, match) => Math.max(max, match.round_number), 0);
+  const roundsMap = new Map<number, BracketMatchRow[]>();
+
+  for (const match of matches) {
+    const roundMatches = roundsMap.get(match.round_number) ?? [];
+    roundMatches.push(match);
+    roundsMap.set(match.round_number, roundMatches);
+  }
+
+  const rounds = Array.from(roundsMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([roundNumber, roundMatches]) => ({
+      roundNumber,
+      name: buildRoundName(context.bracketType, roundNumber, totalRounds),
+      matches: roundMatches
+        .sort((a, b) => a.slot_number - b.slot_number)
+        .map((match) => ({
+          matchId: match.matchid,
+          label: match.match_label,
+          slotNumber: match.slot_number,
+          status: match.status,
+          venue: match.venue,
+          matchTime: match.match_time,
+          winnerTeamId: match.winner_team_id,
+          homeSourceMatchId: match.home_source_match_id,
+          awaySourceMatchId: match.away_source_match_id,
+          homeTeam: {
+            id: match.home_team_id,
+            name: match.home_team,
+            score: match.home_score,
+          },
+          awayTeam: {
+            id: match.away_team_id,
+            name: match.away_team,
+            score: match.away_score,
+          },
+        })),
+    }));
+
+  return {
+    tournament: {
+      tournamentId: context.tournamentId,
+      name: context.name,
+      sport: context.sport,
+      bracketType: context.bracketType,
+      startDate:
+        normalizeDateString(context.startDate),
+      endDate:
+        normalizeDateString(context.endDate),
+    },
+    rounds,
+  };
+};
+
+export const updateTournamentMatchResult = async (
+  tournamentId: number,
+  matchId: number,
+  homeScore: number,
+  awayScore: number
+): Promise<{ winnerTeamId: number }> => {
+  if (!Number.isInteger(homeScore) || !Number.isInteger(awayScore) || homeScore < 0 || awayScore < 0) {
+    throw new Error("Scores must be whole numbers greater than or equal to 0.");
+  }
+
+  if (homeScore === awayScore) {
+    throw new Error("Matches cannot end in a tie.");
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const match = await getMatchById(tournamentId, matchId, client);
+
+    if (!match) {
+      throw new Error("Match not found.");
+    }
+
+    if (match.home_team_id === null || match.away_team_id === null) {
+      throw new Error("Both teams must be known before submitting a result.");
+    }
+
+    const winnerTeamId = homeScore > awayScore ? match.home_team_id : match.away_team_id;
+
+    await saveMatchResult(tournamentId, matchId, homeScore, awayScore, winnerTeamId, client);
+
+    if (match.bracket_type === "single_elimination") {
+      await propagateWinnerToNextMatch(tournamentId, matchId, winnerTeamId, client);
+    }
+
+    await client.query("COMMIT");
+
+    return { winnerTeamId };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
