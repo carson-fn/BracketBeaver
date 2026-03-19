@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "./styles/signupStyles.css";
 import { useNavigate } from "react-router-dom";
+import { callSignupAPI } from "../../api/signupApi";
 
 function SignUpPage() {
   const [username, setUsername] = useState("");
@@ -14,7 +15,14 @@ function SignUpPage() {
 
     const handleSignUp = async () => {
         try{
+            const res = await callSignupAPI(username, password);
 
+            if (res.success) {
+            setMessage("Account created! 🦫");
+            setTimeout(() => navigate("/login"), 1000);
+            } else {
+            setMessage("Username already exists");
+            }
         }
         catch {
             setMessage("Server Error");
@@ -44,6 +52,7 @@ function SignUpPage() {
         />
 
         <button className="signup-button" onClick={handleSignUp} >Create Account</button>
+        <p className="signup-message">{message}</p>
       </div>
     </div>
   );
