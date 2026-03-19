@@ -143,6 +143,14 @@ export const generateTournamentSchedule = async (
     throw new Error("Tournament requires at least 1 venue.");
   }
 
+  // Determine bracket type, if available, and reject unsupported types.
+  const bracketType = (context as { bracketType?: string }).bracketType;
+  if (bracketType && bracketType !== "round_robin") {
+    throw new Error(
+      `Schedule generation not supported for bracket type: ${bracketType}`
+    );
+  }
+
   let startDateStr = context.startDate;
   if (typeof startDateStr !== "string") {
     if (startDateStr instanceof Date) {
