@@ -18,7 +18,7 @@ function SignUpPage() {
             const res = await callSignupAPI(username, password);
 
             if (res.success) {
-            setMessage("Account created! 🦫");
+            setMessage("Account created!");
             setTimeout(() => navigate("/login"), 1000);
             } else {
             setMessage("Username already exists");

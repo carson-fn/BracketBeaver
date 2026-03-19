@@ -19,7 +19,7 @@ function LoginPage() {
       const res = await callLoginAPI(username, password);
 
       if (res.success) {
-        setMessage("Welcome back! 🦫");
+        setMessage("Welcome back!");
       } else {
         setMessage("Invalid credentials");
       }
@@ -54,7 +54,7 @@ function LoginPage() {
           Login
         </button>
 
-        <p>Don't have a account? <a href="/signup">Sign up!</a></p>
+        <p className="signup-link">Don't have a account? <a href="/signup">Sign up!</a></p>
 
         <p className="login-message">{message}</p>
       </div>
