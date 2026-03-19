@@ -104,11 +104,11 @@ body {
 
 .signup-link a {
   color: #D6CBB3;
-  text-transform: underline;
 }
 
 .signup-link a:hover {
   color: white;
+  text-decoration: underline;
 }
 
 .login-message {
