@@ -29,6 +29,16 @@ cd ../backend
 npm install
 ```
 
+### 4. Configure environment variables
+
+Create a `.env` file in `backend/` based on `.env.example` and add:
+
+```
+DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<database>
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-2.5-flash   # select model here
+```
+
 ## Running the Application
 
 ### Start the frontend
