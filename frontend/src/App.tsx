@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/landing/LandingPage";
 import LoginPage from "./pages/login/LoginPage";
 import TournamentPage from "./pages/tournaments/TournamentPage";
+import GeminiDemoPage from "./pages/geminiDemo/GeminiDemoPage";
 import "./global-styles/App.css";
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/tournaments" element={<TournamentPage />} />
+        <Route path="/llm-demo" element={<GeminiDemoPage />} />
       </Routes>
     </Router>
   );
