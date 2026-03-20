@@ -16,6 +16,10 @@ function LandingPage() {
     navigate("/login");
   };
 
+  const handleGemini = () => {
+    navigate("/llm-demo");
+  };
+
   return (
     <div className="landing-page">
       <div className="photo-1"><img src={testImage} alt="test" /></div>
@@ -25,13 +29,19 @@ function LandingPage() {
           Your go-to tournament generator!
         </h3>
 
+        <button className="landing-button" onClick={handleLogin}>
+          Login
+        </button>
+
         <button className="landing-button" onClick={handleGuest}>
           Continue as Guest
         </button>
 
-        <button className="landing-button" onClick={handleLogin}>
-          Login
+        <button className="landing-button" onClick={handleGemini}>
+          Try Gemini
         </button>
+
+
 
         <p className="landing-message">{message}</p>
       </div>
