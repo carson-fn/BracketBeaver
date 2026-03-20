@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { callHelloAPI } from "../../api/helloApi";
 import "./styles/landingStyles.css";
-import testImage from "./imgs/test.jpg";
 
 function LandingPage() {
   const [message, setMessage] = useState("");
@@ -22,7 +21,6 @@ function LandingPage() {
 
   return (
     <div className="landing-page">
-      <div className="photo-1"><img src={testImage} alt="test" /></div>
       <div className="landing-card">
         <h1 className="landing-title">Bracket Beaver</h1>
         <h3 className="landing-subtitle">
@@ -45,10 +43,6 @@ function LandingPage() {
 
         <p className="landing-message">{message}</p>
       </div>
-      <div className="photo-2"><img src={testImage} alt="test" /></div>
-      <div className="photo-3"><img src={testImage} alt="test" /></div>
-      <div className="photo-4"><img src={testImage} alt="test" /></div>
-      <div className="photo-5"><img src={testImage} alt="test" /></div>
     </div>
   );
 }

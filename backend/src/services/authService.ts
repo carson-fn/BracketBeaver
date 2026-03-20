@@ -10,6 +10,7 @@ export const loginUser = async (username: string, password: string) => {
   return { success: true, user };
 };
 
+
 export const registerUser = async (username: string, password: string) => {
   const existing = await findUserByUsername(username);
 
