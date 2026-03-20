@@ -78,30 +78,30 @@
   font-size: 1.4rem;
 }
 
-label {
+.tournament-page label {
   display: flex;
   flex-direction: column;
   gap: 8px;
   font-size: 0.95rem;
 }
 
-input,
-textarea,
-select,
-button {
+.tournament-page input,
+.tournament-page textarea,
+.tournament-page select,
+.tournament-page button {
   font: inherit;
 }
 
-input,
-textarea,
-select {
+.tournament-page input,
+.tournament-page textarea,
+.tournament-page select {
   border: 1px solid #d4c4a4;
   border-radius: 12px;
   padding: 12px 14px;
   background: white;
 }
 
-textarea {
+.tournament-page textarea {
   resize: vertical;
 }
 
