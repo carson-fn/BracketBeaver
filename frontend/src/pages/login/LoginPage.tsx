@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { use, useState } from "react";
+import { callLoginAPI } from "../../api/loginApi";
+import "./styles/loginStyles.css";
 import { useNavigate } from "react-router-dom";
-import { callLoginAPI } from "../../api/loginApi.ts";
 
 function LoginPage() {
   const [username, setUsername] = useState("");
@@ -8,13 +9,18 @@ function LoginPage() {
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
+  const handleBack = async () => {
+    navigate("/");
+  };
+
+
   const handleLogin = async () => {
     try {
       const res = await callLoginAPI(username, password);
 
       if (res.success) {
         localStorage.setItem("bb-user", JSON.stringify(res.user));
-        setMessage("Login successful");
+        setMessage("Welcome back! 🦫");
         navigate("/tournaments");
       } else {
         setMessage("Invalid credentials");
@@ -25,30 +31,35 @@ function LoginPage() {
   };
 
   return (
-    <div style={{ textAlign: "center", marginTop: "100px" }}>
-      <h1>Login</h1>
+    <div className="login-page">
+      <button className="back-button" onClick={handleBack}>Back</button>
+      <div className="login-card">
+        <h1 className="login-title">Login</h1>
 
-      <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
+        <input
+          className="login-input"
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
 
-      <br /><br />
+        <input
+          className="login-input"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+        <button className="login-button" onClick={handleLogin}>
+          Login
+        </button>
 
-      <br /><br />
+        <p>Don't have a account? <a href="/signup">Sign up!</a></p>
 
-      <button onClick={handleLogin}>Login</button>
-
-      <p>{message}</p>
+        <p className="login-message">{message}</p>
+      </div>
     </div>
   );
 }

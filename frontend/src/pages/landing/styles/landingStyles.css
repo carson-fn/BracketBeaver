@@ -1,39 +1,50 @@
+body {
+  background-color: #F5F5DC; 
+  font-family: sans-serif;
+}
+
 .landing-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  background-color: rgb(230, 196, 152);
+  text-align: center;
+  display: grid;
+  grid-template-rows: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 50px;
+  margin-top: 100px;
 }
 
 .landing-title {
   font-size: 3rem;
-  font-weight: 400;
-  margin-bottom: 10px;
+  color: #6B4F3A; 
 }
 
 .landing-subtitle {
-  font-size: 1.5rem;
-  margin-bottom: 60px;
+  color: #A67C52; 
+  margin-bottom: 30px;
 }
 
 .landing-button {
-  background-color: #007edf;
-  color: white;
+  background-color: #8BC34A; 
   border: none;
-  padding: 10px 20px;
+  padding: 12px 25px;
   margin: 10px;
+  border-radius: 25px;
   font-size: 1rem;
-  font-family: inherit;
   cursor: pointer;
+  transition: 0.2s ease;
 }
 
 .landing-button:hover {
-  background-color: #0056b3;
+  background-color: #7cb342;
+  transform: scale(1.05);
 }
 
 .landing-message {
-  font-size: 1.2rem;
   margin-top: 20px;
+  color: #3E2C23;
+}
+
+.landing-page img {
+  width: 350px;
+  height: 250px;
+  object-fit: cover;
 }
