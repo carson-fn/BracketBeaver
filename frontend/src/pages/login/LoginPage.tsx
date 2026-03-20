@@ -1,4 +1,4 @@
-import React, { use, useState } from "react";
+import { useState } from "react";
 import { callLoginAPI } from "../../api/loginApi";
 import "./styles/loginStyles.css";
 import { useNavigate } from "react-router-dom";
@@ -19,7 +19,9 @@ function LoginPage() {
       const res = await callLoginAPI(username, password);
 
       if (res.success) {
-        setMessage("Welcome back!");
+        localStorage.setItem("bb-user", JSON.stringify(res.user));
+        setMessage("Welcome back! 🦫");
+        navigate("/tournaments");
       } else {
         setMessage("Invalid credentials");
       }

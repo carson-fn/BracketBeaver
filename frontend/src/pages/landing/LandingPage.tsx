@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { callHelloAPI } from "../../api/helloApi";
 import "./styles/landingStyles.css";
@@ -15,6 +15,10 @@ function LandingPage() {
     navigate("/login");
   };
 
+  const handleGemini = () => {
+    navigate("/llm-demo");
+  };
+
   return (
     <div className="landing-page">
       <div className="landing-card">
@@ -23,13 +27,19 @@ function LandingPage() {
           Your go-to tournament generator!
         </h3>
 
+        <button className="landing-button" onClick={handleLogin}>
+          Login
+        </button>
+
         <button className="landing-button" onClick={handleGuest}>
           Continue as Guest
         </button>
 
-        <button className="landing-button" onClick={handleLogin}>
-          Login
+        <button className="landing-button" onClick={handleGemini}>
+          Try Gemini
         </button>
+
+
 
         <p className="landing-message">{message}</p>
       </div>
