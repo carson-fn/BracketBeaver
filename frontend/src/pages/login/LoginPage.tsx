@@ -11,6 +11,12 @@ function LoginPage() {
       const res = await callLoginAPI(username, password);
 
       if (res.success) {
+        if (res.user.role === "admin") {
+          window.location.href = "/admin";
+        }
+        if (res.user.role === "organizer") {
+          window.location.href = "/organizer";
+        }
         setMessage("Login successful");
       } else {
         setMessage("Invalid credentials");
@@ -31,7 +37,8 @@ function LoginPage() {
         onChange={(e) => setUsername(e.target.value)}
       />
 
-      <br /><br />
+      <br />
+      <br />
 
       <input
         type="password"
@@ -40,7 +47,8 @@ function LoginPage() {
         onChange={(e) => setPassword(e.target.value)}
       />
 
-      <br /><br />
+      <br />
+      <br />
 
       <button onClick={handleLogin}>Login</button>
 
