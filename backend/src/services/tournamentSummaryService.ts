@@ -129,30 +129,46 @@ const pickRoundRobinPodium = (teams: TeamRow[], matches: BracketMatchRow[]) => {
   return { champion, runnerUp };
 };
 
-const computeAggs = (matches: BracketMatchRow[]) => {
+// helper for computeHighlightPoints
+const formatHighlight = (match: BracketMatchRow, label: string) => {
+  if (!match) return `${label}: n/a`;
+  const margin = Math.abs((match.home_score ?? 0) - (match.away_score ?? 0));
+  return `${label}: ${match.match_label} - ${match.home_team} ${match.home_score}-${match.away_score} ${match.away_team} (margin ${margin})`;
+};
+
+const computeHighlightPoints = (matches: BracketMatchRow[]) => {
   const scored = matches.filter(
     (m) => m.home_score !== null && m.away_score !== null && m.status === "completed"
   );
 
+  // get the point difference for each game
   const margins = scored.map((m) => Math.abs((m.home_score ?? 0) - (m.away_score ?? 0)));
-  const averageMargin =
-    margins.length > 0 ? margins.reduce((sum, value) => sum + value, 0) / margins.length : 0;
 
+  // average margin will be used in summary
+  const averageMargin = margins.length > 0 ? margins.reduce((sum, value) => sum + value, 0) / margins.length : 0;
+
+  // finally get the clostest game and biggest blowout
+  let closeGame = "";
+  let blowout = "";
+
+  // sort matches by margin
   const byMarginAsc = [...scored].sort(
     (a, b) => Math.abs((a.home_score ?? 0) - (a.away_score ?? 0)) - Math.abs((b.home_score ?? 0) - (b.away_score ?? 0))
   );
   const byMarginDesc = [...byMarginAsc].reverse();
 
-  const formatHighlight = (match: BracketMatchRow, label: string) => {
-    if (!match) return `${label}: n/a`;
-    const margin = Math.abs((match.home_score ?? 0) - (match.away_score ?? 0));
-    return `${label}: ${match.match_label} - ${match.home_team} ${match.home_score}-${match.away_score} ${match.away_team} (margin ${margin})`;
-  };
+
+  if (byMarginAsc[0] != undefined) {
+    closeGame = formatHighlight(byMarginAsc[0], "Closest game");
+  }
+  if (byMarginDesc[0] != undefined) {
+    blowout = formatHighlight(byMarginDesc[0], "Biggest win");
+  }
 
   return {
     averageMargin,
-    closeGame: formatHighlight(byMarginAsc[0], "Closest game"),
-    blowout: formatHighlight(byMarginDesc[0], "Biggest win"),
+    closeGame,
+    blowout,
   };
 };
 
@@ -202,7 +218,7 @@ const buildSummaryFacts = (
       ? pickSingleEliminationPodium(matches)
       : pickRoundRobinPodium(teams, matches);
 
-  const { averageMargin, closeGame, blowout } = computeAggs(matches);
+  const { averageMargin, closeGame, blowout } = computeHighlightPoints(matches);
 
   return {
     champion,
@@ -241,7 +257,7 @@ export const generateTournamentSummary = async (
     facts
   );
 
-  const result = await runPrompt(prompt);
+ const result = await runPrompt(prompt);
 
   return {
     summary: result.text,
