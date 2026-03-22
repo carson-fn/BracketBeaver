@@ -257,12 +257,21 @@ export const generateTournamentSummary = async (
     facts
   );
 
- const result = await runPrompt(prompt);
+  const result = await runPrompt(prompt);
+
+  if (result.tokensUsed !== undefined) {
+    return {
+      text: prompt,
+      summary: result.text,
+      model: result.model,
+      tokensUsed: result.tokensUsed,
+    };
+  }
 
   return {
+    text: prompt,
     summary: result.text,
     model: result.model,
-    tokensUsed: result.tokensUsed,
   };
 };
 
