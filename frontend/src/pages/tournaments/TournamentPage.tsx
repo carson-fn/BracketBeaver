@@ -3,6 +3,7 @@ import {
   createTournamentApi,
   generateTournamentApi,
   getBracketApi,
+  generateTournamentSummaryApi,
   updateMatchResultApi,
   type BracketResponse,
 } from "../../api/tournamentApi";
@@ -35,6 +36,9 @@ function TournamentPage() {
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [scoreDrafts, setScoreDrafts] = useState<ScoreDrafts>({});
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   const storedUser = useMemo<StoredUser | null>(() => {
     const raw = localStorage.getItem("bb-user");
@@ -56,6 +60,8 @@ function TournamentPage() {
     setBracket(response.bracket);
     setCurrentTournamentId(tournamentId);
     setScoreDrafts({});
+    setSummary(null);
+    setSummaryError("");
   };
 
   const handleCreateTournament = async () => {
@@ -171,6 +177,31 @@ function TournamentPage() {
       setError(caughtError instanceof Error ? caughtError.message : "Failed to advance winner.");
     } finally {
       setIsBusy(false);
+    }
+  };
+
+  const isBracketComplete = useMemo(() => {
+    if (!bracket) return false;
+    return bracket.rounds.every((round) => round.matches.every((match) => match.status === "completed"));
+  }, [bracket]);
+
+  const handleGenerateSummary = async () => {
+    if (!currentTournamentId) {
+      setSummaryError("No tournament is loaded.");
+      return;
+    }
+
+    setSummaryError("");
+    setSummary(null);
+    setSummaryLoading(true);
+
+    try {
+      const result = await generateTournamentSummaryApi(currentTournamentId);
+      setSummary(result.summary);
+    } catch (caughtError) {
+      setSummaryError(caughtError instanceof Error ? caughtError.message : "Failed to generate summary.");
+    } finally {
+      setSummaryLoading(false);
     }
   };
 
@@ -303,7 +334,33 @@ function TournamentPage() {
                   {bracket.tournament.sport} • {bracket.tournament.startDate} to {bracket.tournament.endDate}
                 </p>
               </div>
+              <div className="summary-actions">
+                <button
+                  className="secondary"
+                  onClick={handleGenerateSummary}
+                  disabled={summaryLoading || !isBracketComplete}
+                >
+                  {summaryLoading ? "Generating..." : "Generate summary"}
+                </button>
+                <p className="summary-hint">
+                  {isBracketComplete
+                    ? "Ready to summarize this finished bracket."
+                    : "Complete every match to enable summary."}
+                </p>
+              </div>
             </div>
+
+            {(summary || summaryError) && (
+              <div className="summary-panel">
+                {summaryError ? <p className="status-message error">{summaryError}</p> : null}
+                {summary ? (
+                  <>
+                    <p className="eyebrow">LLM summary</p>
+                    <p className="summary-text">{summary}</p>
+                  </>
+                ) : null}
+              </div>
+            )}
 
             <div className="rounds-row">
               {bracket.rounds.map((round) => (
