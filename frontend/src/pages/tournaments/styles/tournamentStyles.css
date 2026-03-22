@@ -158,6 +158,8 @@ button.secondary {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 10px;
   margin-bottom: 20px;
 }
 
@@ -182,6 +184,8 @@ button.secondary {
   border-radius: 14px;
   padding: 14px 16px;
   margin-bottom: 18px;
+  flex-basis: 100%;
+  width: 100%;
 }
 
 .summary-text {
