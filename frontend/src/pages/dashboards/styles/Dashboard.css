@@ -7,7 +7,7 @@
 /* Sidebar */
 .sidebar {
   width: 16rem;
-  background-color: green;
+  background-color: #8BC34A;
   color: white;
   display: flex;
   flex-direction: column;
@@ -27,14 +27,15 @@
   cursor: pointer;
   text-align: left;
   background-color: #f6f6d0;
+  color: darkgray;
 }
 
 .sidebar-button.active {
-  background-color: #654321; /* highlight active tab */
+  background-color: #6B4F3A; /* highlight active tab */
 }
 
 .sidebar-button:hover {
-  background-color: #422b15; /* hover effect */
+  background-color: #6B4F3A; /* hover effect */
 }
 
 /* Sidebar bottom buttons */
@@ -46,7 +47,7 @@
 }
 
 .button-create {
-  background-color: green; /* blue */
+  background-color: #6B4F3A; /* blue */
   padding: 0.5rem;
   border-radius: 0.25rem;
   color: white;
@@ -54,7 +55,7 @@
 }
 
 .button-create:hover {
-  background-color: darkgreen;
+  background-color: #483526;
 }
 
 .button-logout {
@@ -78,11 +79,12 @@
 }
 
 .search-input {
-  border: 1px solid #d1d5db;
+  border: 1px solid #FFF8E7;
   padding: 0.5rem;
   border-radius: 0.25rem;
   width: 100%;
   margin-bottom: 1rem;
+  background-color: #FFF8E7;
 }
 
 .card {
@@ -94,13 +96,13 @@
   border-radius: 0.75rem;
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  background-color: white;
+  background-color: #FFF8E7;
   margin-bottom: 0.75rem;
 }
 
 .card-action-button {
-  background-color: green; 
-  color: white;
+  background-color: #8BC34A; 
+  color: #FFF8E7;
   padding: 0.4rem 0.6rem;
   border-radius: 0.25rem;
   cursor: pointer;

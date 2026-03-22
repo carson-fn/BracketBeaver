@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "./styles/OrganizerDashboard.css";
+import "./styles/Dashboard.css";
 
 export default function OrganizerDashboard() {
   const [activeTab, setActiveTab] = useState("brackets");
