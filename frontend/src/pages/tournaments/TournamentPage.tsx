@@ -147,6 +147,15 @@ function TournamentPage() {
     }
   };
 
+  const handleExportPDF = () => {
+    if (!bracket) {
+      setError("No bracket to export.");
+      return;
+    }
+    setMessage("opening pdf export")
+    window.print();
+  }
+
   const handleQuickAdvance = async (
     matchId: number,
     winner: "home" | "away"
@@ -302,7 +311,11 @@ function TournamentPage() {
                 <p className="panel-copy muted">
                   {bracket.tournament.sport} • {bracket.tournament.startDate} to {bracket.tournament.endDate}
                 </p>
+                <p className="export-branding">Created with Bracket Beaver</p>
               </div>
+              <button onClick={handleExportPDF} disabled={isBusy}>
+                Export as PDF
+              </button>
             </div>
 
             <div className="rounds-row">
