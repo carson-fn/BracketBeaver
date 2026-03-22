@@ -50,7 +50,13 @@ export type BracketResponse = {
 };
 
 const handleJson = async <T>(response: Response): Promise<T> => {
-  const data = (await response.json()) as T & { message?: string; success?: boolean };
+  let data: any = {};
+
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error("No tournament found with that ID.");
+  }
 
   if (!response.ok) {
     throw new Error(data.message ?? "Request failed.");
