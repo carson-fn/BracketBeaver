@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import {
   createTournamentApi,
   generateTournamentApi,
@@ -7,6 +7,8 @@ import {
   type BracketResponse,
 } from "../../api/tournamentApi";
 import "./styles/tournamentStyles.css";
+import  { toPng } from "html-to-image";
+import jsPDF from "jspdf";
 
 type StoredUser = {
   userid?: number;
@@ -35,6 +37,7 @@ function TournamentPage() {
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [scoreDrafts, setScoreDrafts] = useState<ScoreDrafts>({});
+  const bracketExportRef = useRef<HTMLDivElement | null>(null);
 
   const storedUser = useMemo<StoredUser | null>(() => {
     const raw = localStorage.getItem("bb-user");
@@ -57,6 +60,39 @@ function TournamentPage() {
     setCurrentTournamentId(tournamentId);
     setScoreDrafts({});
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const idFromUrl = params.get("id");
+
+    if (!idFromUrl) return;
+
+    const tournamentId = Number(idFromUrl);
+    if (!Number.isInteger(tournamentId) || tournamentId <= 0) return;
+
+    setLoadTournamentId(String(tournamentId));
+
+    const loadFromLink = async () => {
+      setIsBusy(true);
+      setError("");
+      setMessage("");
+
+      try {
+        await refreshBracket(tournamentId);
+        setMessage(`Loaded tournament ${tournamentId} from shared link.`);
+      } catch (caughtError) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Failed to load shared bracket."
+        );
+      } finally {
+        setIsBusy(false);
+      }
+    };
+
+    loadFromLink();
+  }, []);
 
   const handleCreateTournament = async () => {
     setIsBusy(true);
@@ -147,14 +183,109 @@ function TournamentPage() {
     }
   };
 
-  const handleExportPDF = () => {
-    if (!bracket) {
+  const handleExportPNG = async () => {
+    if (!bracket || !bracketExportRef.current) {
       setError("No bracket to export.");
       return;
     }
-    setMessage("opening pdf export")
-    window.print();
-  }
+
+    setIsBusy(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const dataUrl = await toPng(bracketExportRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+      });
+
+      const link = document.createElement("a");
+      link.download = `${bracket.tournament.name
+        .toLowerCase()
+        .replace(/\s+/g, "-")}-bracket.png`;
+      link.href = dataUrl;
+      link.click();
+
+      setMessage("Bracket exported as PNG.");
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Failed to export PNG."
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!bracket || !bracketExportRef.current) {
+      setError("No bracket to export.");
+      return;
+    }
+
+    setIsBusy(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const dataUrl = await toPng(bracketExportRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+      });
+
+      const image = new Image();
+      image.src = dataUrl;
+
+      image.onload = () => {
+        const pdf = new jsPDF({
+          orientation: image.width > image.height ? "landscape" : "portrait",
+          unit: "px",
+          format: [image.width, image.height],
+        });
+
+        pdf.addImage(dataUrl, "PNG", 0, 0, image.width, image.height);
+        pdf.save(
+          `${bracket.tournament.name
+            .toLowerCase()
+            .replace(/\s+/g, "-")}-bracket.pdf`
+        );
+        setMessage("Bracket exported as PDF.");
+        setIsBusy(false);
+      };
+
+      image.onerror = () => {
+        setError("Failed to prepare PDF export.");
+        setIsBusy(false);
+      };
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Failed to export PDF."
+      );
+      setIsBusy(false);
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!bracket?.tournament.tournamentId) {
+      setError("No bracket to share.");
+      return;
+    }
+
+    const shareUrl = `${window.location.origin}/tournaments?id=${bracket.tournament.tournamentId}`;
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setError("");
+      setMessage("Share link copied to clipboard.");
+    } catch {
+      setError("Failed to copy link.");
+    }
+  };
 
   const handleQuickAdvance = async (
     matchId: number,
@@ -302,109 +433,128 @@ function TournamentPage() {
       </section>
 
       <section className="bracket-section">
-        {bracket ? (
-          <>
-            <div className="bracket-header">
-              <div>
-                <p className="eyebrow">{bracket.tournament.bracketType.replaceAll("_", " ")}</p>
-                <h2>{bracket.tournament.name}</h2>
-                <p className="panel-copy muted">
-                  {bracket.tournament.sport} • {bracket.tournament.startDate} to {bracket.tournament.endDate}
-                </p>
-                <p className="export-branding">Created with Bracket Beaver</p>
-              </div>
-              <button onClick={handleExportPDF} disabled={isBusy}>
-                Export as PDF
-              </button>
-            </div>
+  {bracket ? (
+    <>
+      <div className="button-row export-row">
+        <button onClick={handleExportPNG} disabled={isBusy}>
+          Export as PNG
+        </button>
+        <button onClick={handleExportPDF} disabled={isBusy}>
+          Export as PDF
+        </button>
+        <button onClick={handleCopyShareLink} disabled={isBusy}>
+          Copy Share Link
+        </button>
+      </div>
+      <div ref={bracketExportRef} className="bracket-export-area">
 
-            <div className="rounds-row">
-              {bracket.rounds.map((round) => (
-                <div className="round-column" key={round.roundNumber}>
-                  <h3>{round.name}</h3>
-                  {round.matches.map((match) => {
-                    const draft = scoreDrafts[match.matchId] ?? { homeScore: "", awayScore: "" };
-                    const canSubmit =
-                      match.homeTeam.id !== null &&
-                      match.awayTeam.id !== null &&
-                      match.status !== "completed";
-
-                    return (
-                      <article className="match-card" key={match.matchId}>
-                        <div className="match-card__top">
-                          <div>
-                            <strong>{match.label}</strong>
-                            <p>
-                              {match.venue} • {new Date(match.matchTime).toLocaleString()}
-                            </p>
-                          </div>
-                          <span className={`badge ${match.status}`}>{match.status}</span>
-                        </div>
-
-                        <div className={`team-row ${match.winnerTeamId === match.homeTeam.id ? "winner" : ""}`}>
-                          <span>{match.homeTeam.name}</span>
-                          <span>{match.homeTeam.score ?? "—"}</span>
-                        </div>
-                        <div className={`team-row ${match.winnerTeamId === match.awayTeam.id ? "winner" : ""}`}>
-                          <span>{match.awayTeam.name}</span>
-                          <span>{match.awayTeam.score ?? "—"}</span>
-                        </div>
-
-                        {canSubmit ? (
-                          <div className="score-controls">
-                            <input
-                              type="number"
-                              min="0"
-                              placeholder="Home"
-                              value={draft.homeScore}
-                              onChange={(event) => handleScoreChange(match.matchId, "homeScore", event.target.value)}
-                            />
-                            <input
-                              type="number"
-                              min="0"
-                              placeholder="Away"
-                              value={draft.awayScore}
-                              onChange={(event) => handleScoreChange(match.matchId, "awayScore", event.target.value)}
-                            />
-                            <button onClick={() => handleSubmitResult(match.matchId)} disabled={isBusy}>
-                              Save
-                            </button>
-                          </div>
-                        ) : null}
-
-                        {canSubmit ? (
-                          <div className="quick-advance-row">
-                            <span>Quick advance:</span>
-                            <button
-                              className="secondary"
-                              onClick={() => handleQuickAdvance(match.matchId, "home")}
-                              disabled={isBusy}
-                            >
-                              {match.homeTeam.name} wins
-                            </button>
-                            <button
-                              className="secondary"
-                              onClick={() => handleQuickAdvance(match.matchId, "away")}
-                              disabled={isBusy}
-                            >
-                              {match.awayTeam.name} wins
-                            </button>
-                          </div>
-                        ) : null}
-                      </article>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="empty-state">
-            <h2>No bracket loaded yet</h2>
-            <p>Create a new tournament or load an existing one to see the generated bracket.</p>
+        <div className="bracket-header">
+          <div>
+            <p className="eyebrow">
+              {bracket.tournament.bracketType.replaceAll("_", " ")}
+            </p>
+            <h2>{bracket.tournament.name}</h2>
+            <p className="panel-copy muted">
+              {bracket.tournament.sport} • {bracket.tournament.startDate} to {bracket.tournament.endDate}
+            </p>
+            <p className="export-branding">Created with Bracket Beaver</p>
           </div>
-        )}
-      </section>
+        </div>
+
+        <div className="rounds-row">
+          {bracket.rounds.map((round) => (
+            <div className="round-column" key={round.roundNumber}>
+              <h3>{round.name}</h3>
+
+              {round.matches.map((match) => {
+                const draft = scoreDrafts[match.matchId] ?? { homeScore: "", awayScore: "" };
+                const canSubmit =
+                  match.homeTeam.id !== null &&
+                  match.awayTeam.id !== null &&
+                  match.status !== "completed";
+
+                return (
+                  <article className="match-card" key={match.matchId}>
+                    <div className="match-card__top">
+                      <div>
+                        <strong>{match.label}</strong>
+                        <p>
+                          {match.venue} • {new Date(match.matchTime).toLocaleString()}
+                        </p>
+                      </div>
+                      <span className={`badge ${match.status}`}>{match.status}</span>
+                    </div>
+
+                    <div className={`team-row ${match.winnerTeamId === match.homeTeam.id ? "winner" : ""}`}>
+                      <span>{match.homeTeam.name}</span>
+                      <span>{match.homeTeam.score ?? "—"}</span>
+                    </div>
+
+                    <div className={`team-row ${match.winnerTeamId === match.awayTeam.id ? "winner" : ""}`}>
+                      <span>{match.awayTeam.name}</span>
+                      <span>{match.awayTeam.score ?? "—"}</span>
+                    </div>
+
+                    {canSubmit ? (
+                      <div className="score-controls">
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Home"
+                          value={draft.homeScore}
+                          onChange={(event) =>
+                            handleScoreChange(match.matchId, "homeScore", event.target.value)
+                          }
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Away"
+                          value={draft.awayScore}
+                          onChange={(event) =>
+                            handleScoreChange(match.matchId, "awayScore", event.target.value)
+                          }
+                        />
+                        <button onClick={() => handleSubmitResult(match.matchId)} disabled={isBusy}>
+                          Save
+                        </button>
+                      </div>
+                    ) : null}
+
+                    {canSubmit ? (
+                      <div className="quick-advance-row">
+                        <span>Quick advance:</span>
+                        <button
+                          className="secondary"
+                          onClick={() => handleQuickAdvance(match.matchId, "home")}
+                          disabled={isBusy}
+                        >
+                          {match.homeTeam.name} wins
+                        </button>
+                        <button
+                          className="secondary"
+                          onClick={() => handleQuickAdvance(match.matchId, "away")}
+                          disabled={isBusy}
+                        >
+                          {match.awayTeam.name} wins
+                        </button>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  ) : (
+    <div className="empty-state">
+      <h2>No bracket loaded yet</h2>
+      <p>Create a new tournament or load an existing one to see the generated bracket.</p>
+    </div>
+  )}
+</section>  
     </div>
   );
 }
