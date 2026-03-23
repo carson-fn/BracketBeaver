@@ -1,6 +1,8 @@
+import { getApiUrl } from "./apiConfig";
+
 export async function callHelloAPI(){
     try{
-      const res = await fetch("/api/hello");
+      const res = await fetch(getApiUrl("/api/hello"));
 
       if(!res.ok){
         throw new Error(`HTTP error: ${res.status}`);

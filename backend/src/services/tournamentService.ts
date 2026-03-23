@@ -85,8 +85,11 @@ const validateCreatePayload = (payload: CreateTournamentPayload): string | null 
 export const createTournament = async (
   payload: CreateTournamentPayload
 ): Promise<{ tournamentId: number }> => {
+  console.log("createTournament service: Starting with payload:", payload);
+  
   const validationError = validateCreatePayload(payload);
   if (validationError) {
+    console.log("createTournament service: Validation error:", validationError);
     throw new Error(validationError);
   }
 
@@ -96,7 +99,16 @@ export const createTournament = async (
     venues: sanitizeList(payload.venues),
   };
 
+  console.log("createTournament service: Creating tournament with:", {
+    name: input.name,
+    sport: input.sport,
+    createdBy: input.createdBy,
+    teams: input.teams,
+    venues: input.venues,
+  });
+
   const tournamentId = await createTournamentWithDetails(input);
+  console.log("createTournament service: Successfully created tournament:", tournamentId);
 
   return { tournamentId };
 };
@@ -620,6 +632,58 @@ export const updateTournamentMatchResult = async (
     await client.query("COMMIT");
 
     return { winnerTeamId };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const listTournaments = async (createdBy?: number) => {
+  const query = createdBy
+    ? "SELECT tournamentID as id, name, sport, bracket_type, start_date, end_date, created_by FROM tournaments WHERE created_by = $1 ORDER BY tournamentID DESC"
+    : "SELECT tournamentID as id, name, sport, bracket_type, start_date, end_date, created_by FROM tournaments ORDER BY tournamentID DESC";
+  
+  const result = await pool.query(query, createdBy ? [createdBy] : []);
+  return result.rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    sport: row.sport,
+    bracketType: row.bracket_type,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    createdBy: row.created_by,
+  }));
+};
+
+export const deleteTournament = async (tournamentId: number, createdBy?: number) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const tournamentResult = await client.query(
+      "SELECT tournamentID as id, created_by FROM tournaments WHERE tournamentID = $1",
+      [tournamentId]
+    );
+
+    const tournament = tournamentResult.rows[0];
+    if (!tournament) {
+      throw new Error("Tournament not found.");
+    }
+
+    if (createdBy && tournament.created_by !== createdBy) {
+      throw new Error("You do not have permission to delete this tournament.");
+    }
+
+    await client.query("DELETE FROM matches WHERE tournamentID = $1", [tournamentId]);
+    await client.query("DELETE FROM teams WHERE tournamentID = $1", [tournamentId]);
+    await client.query("DELETE FROM venues WHERE tournamentID = $1", [tournamentId]);
+    await client.query("DELETE FROM tournaments WHERE tournamentID = $1", [tournamentId]);
+
+    await client.query("COMMIT");
+    return { success: true };
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;

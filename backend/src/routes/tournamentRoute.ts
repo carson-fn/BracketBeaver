@@ -5,11 +5,15 @@ import {
   getBracketHandler,
   getScheduleHandler,
   updateMatchResultHandler,
+  getTournamentsHandler,
+  deleteTournamentHandler,
 } from "../controllers/tournamentController.js";
 
 const router = express.Router();
 
 router.post("/tournaments", createTournamentHandler);
+router.get("/tournaments", getTournamentsHandler);
+router.delete("/tournaments/:id", deleteTournamentHandler);
 router.post("/tournaments/:id/schedule/generate", generateScheduleHandler);
 router.get("/tournaments/:id/schedule", getScheduleHandler);
 router.get("/tournaments/:id/bracket", getBracketHandler);

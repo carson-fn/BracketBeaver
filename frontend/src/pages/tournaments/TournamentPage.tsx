@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import {
   createTournamentApi,
   generateTournamentApi,
@@ -27,6 +28,7 @@ const defaultForm = {
 };
 
 function TournamentPage() {
+  const { id: tournamentIdParam } = useParams<{ id: string }>();
   const [form, setForm] = useState(defaultForm);
   const [loadTournamentId, setLoadTournamentId] = useState("");
   const [currentTournamentId, setCurrentTournamentId] = useState<number | null>(null);
@@ -47,7 +49,25 @@ function TournamentPage() {
     }
   }, []);
 
-  const creatorId = storedUser?.userid ?? 1;
+  const creatorId = storedUser?.id ?? 1;
+  
+  // Debug logging
+  useEffect(() => {
+    console.log("TournamentPage - User from localStorage:", storedUser);
+    console.log("TournamentPage - Creator ID being used:", creatorId);
+  }, [storedUser, creatorId]);
+
+  // Auto-load tournament from URL parameter
+  useEffect(() => {
+    if (tournamentIdParam) {
+      const id = parseInt(tournamentIdParam, 10);
+      if (!isNaN(id)) {
+        console.log("TournamentPage - Loading tournament from URL:", id);
+        refreshBracket(id);
+      }
+    }
+  }, [tournamentIdParam]);
+
   const teamList = form.teamsText.split("\n").map((value) => value.trim()).filter(Boolean);
   const venueList = form.venuesText.split("\n").map((value) => value.trim()).filter(Boolean);
 
@@ -64,7 +84,7 @@ function TournamentPage() {
     setMessage("");
 
     try {
-      const createResponse = await createTournamentApi({
+      const payload = {
         name: form.name,
         sport: form.sport,
         bracketType: form.bracketType,
@@ -73,7 +93,13 @@ function TournamentPage() {
         createdBy: creatorId,
         teams: teamList,
         venues: venueList,
-      });
+      };
+      
+      console.log("Creating tournament with payload:", payload);
+      console.log("Creator ID:", creatorId);
+      console.log("Stored User:", storedUser);
+
+      const createResponse = await createTournamentApi(payload);
 
       await generateTournamentApi(createResponse.tournamentId);
       await refreshBracket(createResponse.tournamentId);
@@ -176,6 +202,12 @@ function TournamentPage() {
 
   return (
     <div className="tournament-page">
+      {!storedUser && (
+        <div style={{ padding: "20px", backgroundColor: "#fff3cd", color: "#856404", marginBottom: "20px", borderRadius: "4px" }}>
+          ⚠️ <strong>Not logged in!</strong> Please <a href="/login">login</a> before creating tournaments. Using default user ID 1 which may not exist.
+        </div>
+      )}
+      
       <section className="tournament-panel">
         <div>
           <p className="eyebrow">Bracket Builder</p>

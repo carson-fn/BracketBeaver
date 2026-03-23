@@ -15,23 +15,36 @@ function LoginPage() {
 
   const handleLogin = async () => {
     try {
+      console.log("LOGIN: Attempting with username:", username);
       const res = await callLoginAPI(username, password);
+      
+      console.log("LOGIN: Response from server:", res);
+      console.log("LOGIN: res.success =", res.success);
 
       if (res.success) {
-        if (res.user.role === "admin") {
-          window.location.href = "/admin";
-        }
-        if (res.user.role === "organizer") {
-          window.location.href = "/organizer";
-        }
-        setMessage("Login successful");
+        console.log("LOGIN: Success! User object:", res.user);
+        // Store user FIRST before redirecting
         localStorage.setItem("bb-user", JSON.stringify(res.user));
+        console.log("LOGIN: Stored in localStorage:", localStorage.getItem("bb-user"));
         setMessage("Welcome back! 🦫");
-        navigate("/tournaments");
+        
+        // Then redirect based on role
+        if (res.user.role === "admin") {
+          console.log("LOGIN: Redirecting to /admin");
+          window.location.href = "/admin";
+        } else if (res.user.role === "organizer") {
+          console.log("LOGIN: Redirecting to /organizer");
+          window.location.href = "/organizer";
+        } else {
+          console.log("LOGIN: Navigating to /tournaments");
+          navigate("/tournaments");
+        }
       } else {
+        console.log("LOGIN: Failed - res.success is false");
         setMessage("Invalid credentials");
       }
-    } catch {
+    } catch (error) {
+      console.error("LOGIN: Caught error:", error);
       setMessage("Server error");
     }
   };

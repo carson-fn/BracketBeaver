@@ -5,6 +5,8 @@ import {
   getTournamentBracket,
   getTournamentSchedule,
   updateTournamentMatchResult,
+  listTournaments,
+  deleteTournament,
   type CreateTournamentPayload,
 } from "../services/tournamentService.js";
 
@@ -21,6 +23,8 @@ export const createTournamentHandler = async (req: Request, res: Response) => {
   try {
     const payload = req.body as Partial<CreateTournamentPayload>;
 
+    console.log("CREATE TOURNAMENT: Received payload:", payload);
+
     if (
       typeof payload.name !== "string" ||
       typeof payload.sport !== "string" ||
@@ -31,11 +35,16 @@ export const createTournamentHandler = async (req: Request, res: Response) => {
       !Array.isArray(payload.teams) ||
       !Array.isArray(payload.venues)
     ) {
+      console.log("CREATE TOURNAMENT: Validation failed - invalid types");
+      console.log("  - createdBy type:", typeof payload.createdBy, "value:", payload.createdBy);
       return res.status(400).json({
         success: false,
         message: "Invalid request body.",
       });
     }
+
+    console.log("CREATE TOURNAMENT: Type validation passed");
+    console.log("  - createdBy:", payload.createdBy);
 
     const result = await createTournament({
       name: payload.name,
@@ -48,13 +57,20 @@ export const createTournamentHandler = async (req: Request, res: Response) => {
       venues: payload.venues,
     });
 
+    console.log("CREATE TOURNAMENT: Success, tournament ID:", result.tournamentId);
     return res.status(201).json({
       success: true,
       tournamentId: result.tournamentId,
     });
   } catch (error) {
-    // Log the underlying error for diagnostics, but do not expose details to the client.
-    console.error("Failed to create tournament:", error);
+    if (error instanceof Error) {
+      console.error("CREATE TOURNAMENT: Error:", error.message);
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    console.error("CREATE TOURNAMENT: Unexpected error:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -95,7 +111,14 @@ export const generateScheduleHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // Log unexpected errors and return a generic server error response.
+    if (error instanceof Error) {
+      console.error("Failed to generate tournament schedule:", error.message);
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     console.error("Failed to generate tournament schedule:", error);
     return res.status(500).json({
       success: false,
@@ -211,6 +234,49 @@ export const updateMatchResultHandler = async (req: Request, res: Response) => {
     }
 
     console.error("Failed to update match result:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const getTournamentsHandler = async (req: Request, res: Response) => {
+  try {
+    const createdBy = req.query.createdBy ? parseInt(req.query.createdBy as string) : undefined;
+    const tournaments = await listTournaments(createdBy);
+    return res.status(200).json({ success: true, tournaments });
+  } catch (error) {
+    console.error("Failed to list tournaments:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const deleteTournamentHandler = async (req: Request, res: Response) => {
+  const idParam = req.params.id;
+
+  if (typeof idParam !== "string") {
+    return res.status(400).json({ success: false, message: "Invalid tournament id." });
+  }
+
+  const tournamentId = parseTournamentId(idParam);
+
+  if (!tournamentId) {
+    return res.status(400).json({ success: false, message: "Invalid tournament id." });
+  }
+
+  try {
+    const createdBy = req.body?.createdBy ? parseInt(req.body.createdBy) : undefined;
+    await deleteTournament(tournamentId, createdBy);
+    return res.status(200).json({ success: true, message: "Tournament deleted successfully" });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "Tournament not found.") {
+        return res.status(404).json({ success: false, message: error.message });
+      }
+      if (error.message.includes("do not have permission")) {
+        return res.status(403).json({ success: false, message: error.message });
+      }
+    }
+
+    console.error("Failed to delete tournament:", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };

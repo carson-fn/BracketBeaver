@@ -15,6 +15,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/tournaments" element={<TournamentPage />} />
+        <Route path="/tournaments/:id" element={<TournamentPage />} />
         <Route path="/llm-demo" element={<GeminiDemoPage />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/organizer" element={<OrganizerDashboard />} />

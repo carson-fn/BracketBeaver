@@ -59,8 +59,10 @@ const handleJson = async <T>(response: Response): Promise<T> => {
   return data;
 };
 
+import { getApiUrl } from "./apiConfig";
+
 export const createTournamentApi = async (payload: CreateTournamentRequest) => {
-  const response = await fetch("/api/tournaments", {
+  const response = await fetch(getApiUrl("/api/tournaments"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -72,7 +74,7 @@ export const createTournamentApi = async (payload: CreateTournamentRequest) => {
 };
 
 export const generateTournamentApi = async (tournamentId: number) => {
-  const response = await fetch(`/api/tournaments/${tournamentId}/schedule/generate`, {
+  const response = await fetch(getApiUrl(`/api/tournaments/${tournamentId}/schedule/generate`), {
     method: "POST",
   });
 
@@ -80,7 +82,7 @@ export const generateTournamentApi = async (tournamentId: number) => {
 };
 
 export const getBracketApi = async (tournamentId: number) => {
-  const response = await fetch(`/api/tournaments/${tournamentId}/bracket`);
+  const response = await fetch(getApiUrl(`/api/tournaments/${tournamentId}/bracket`));
   return handleJson<BracketResponse>(response);
 };
 
@@ -90,7 +92,7 @@ export const updateMatchResultApi = async (
   homeScore: number,
   awayScore: number
 ) => {
-  const response = await fetch(`/api/tournaments/${tournamentId}/matches/${matchId}/result`, {
+  const response = await fetch(getApiUrl(`/api/tournaments/${tournamentId}/matches/${matchId}/result`), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -99,4 +101,20 @@ export const updateMatchResultApi = async (
   });
 
   return handleJson<{ success: boolean; winnerTeamId: number }>(response);
+};
+
+export const getTournamentsApi = async (createdBy?: number) => {
+  const url = new URL(getApiUrl("/api/tournaments"));
+  if (createdBy !== undefined) {
+    url.searchParams.append("createdBy", createdBy.toString());
+  }
+  const response = await fetch(url.toString());
+  return handleJson<{ success: boolean; tournaments: Array<{ id: number; name: string; sport: string; bracketType: string; startDate: string; endDate: string }> }>(response);
+};
+
+export const deleteTournamentApi = async (tournamentId: number) => {
+  const response = await fetch(getApiUrl(`/api/tournaments/${tournamentId}`), {
+    method: "DELETE",
+  });
+  return handleJson<{ success: boolean }>(response);
 };
