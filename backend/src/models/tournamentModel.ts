@@ -31,6 +31,7 @@ export type TournamentScheduleContext = {
   startDate: string | Date;
   endDate: string | Date;
   bracketType: string;
+  createdBy: number;
   teams: TeamRow[];
   venues: VenueRow[];
 };
@@ -161,8 +162,9 @@ export const getTournamentScheduleContext = async (
     start_date: string | Date;
     end_date: string | Date;
     bracket_type: string;
+    created_by: number;
   }>(
-    `SELECT tournamentID, name, sport, start_date, end_date, bracket_type
+    `SELECT tournamentID, name, sport, start_date, end_date, bracket_type, created_by
      FROM tournaments
      WHERE tournamentID = $1`,
     [tournamentId]
@@ -201,6 +203,7 @@ export const getTournamentScheduleContext = async (
     startDate: tournamentRow.start_date,
     endDate: tournamentRow.end_date,
     bracketType: tournamentRow.bracket_type,
+    createdBy: tournamentRow.created_by,
     teams: teamsResult.rows,
     venues: venuesResult.rows,
   };

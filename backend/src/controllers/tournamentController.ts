@@ -17,6 +17,20 @@ const parseTournamentId = (idParam: string): number | null => {
   return parsed;
 };
 
+const parseViewer = (req: Request): { userId: number; role: string } | null => {
+  const rawUserId = req.query.userId;
+  const rawRole = req.query.role;
+
+  const userId = Number(rawUserId);
+  const role = typeof rawRole === "string" ? rawRole.trim() : "";
+
+  if (!Number.isInteger(userId) || userId <= 0 || !role) {
+    return null;
+  }
+
+  return { userId, role };
+};
+
 export const createTournamentHandler = async (req: Request, res: Response) => {
   try {
     const payload = req.body as Partial<CreateTournamentPayload>;
@@ -158,12 +172,25 @@ export const getBracketHandler = async (req: Request, res: Response) => {
     });
   }
 
+  const viewer = parseViewer(req);
+
+  if (!viewer) {
+    return res.status(400).json({
+      success: false,
+      message: "userId and role query parameters are required.",
+    });
+  }
+
   try {
-    const bracket = await getTournamentBracket(tournamentId);
+    const bracket = await getTournamentBracket(tournamentId, viewer);
     return res.status(200).json({ success: true, bracket });
   } catch (error) {
     if (error instanceof Error && error.message === "Tournament not found.") {
       return res.status(404).json({ success: false, message: error.message });
+    }
+
+    if (error instanceof Error && error.message === "Access denied.") {
+      return res.status(403).json({ success: false, message: error.message });
     }
 
     console.error("Failed to get tournament bracket:", error);

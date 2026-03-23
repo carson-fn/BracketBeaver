@@ -47,12 +47,17 @@ function TournamentPage() {
     }
   }, []);
 
-  const creatorId = storedUser?.userid ?? 1;
+  const viewerUserId = storedUser?.userid ?? 1;
+  const viewerRole = storedUser?.role ?? "organizer";
+  const creatorId = viewerUserId;
   const teamList = form.teamsText.split("\n").map((value) => value.trim()).filter(Boolean);
   const venueList = form.venuesText.split("\n").map((value) => value.trim()).filter(Boolean);
 
   const refreshBracket = async (tournamentId: number) => {
-    const response = await getBracketApi(tournamentId);
+    const response = await getBracketApi(tournamentId, {
+      userId: viewerUserId,
+      role: viewerRole,
+    });
     setBracket(response.bracket);
     setCurrentTournamentId(tournamentId);
     setScoreDrafts({});
@@ -184,7 +189,7 @@ function TournamentPage() {
             Create a tournament, generate its bracket, and submit results to advance winners.
           </p>
           <p className="panel-copy muted">
-            Active user: {storedUser?.username ?? "Demo organizer"} (creator id {creatorId})
+            Active user: {storedUser?.username ?? "Demo organizer"} ({viewerRole}, id {creatorId})
           </p>
         </div>
 

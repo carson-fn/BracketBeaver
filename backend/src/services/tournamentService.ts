@@ -27,6 +27,11 @@ export type CreateTournamentPayload = {
   venues: string[];
 };
 
+type BracketViewer = {
+  userId: number;
+  role: string;
+};
+
 const sanitizeList = (items: string[]): string[] => {
   return items
     .map((item) => item.trim())
@@ -518,11 +523,21 @@ const buildRoundName = (
   return `Round ${roundNumber}`;
 };
 
-export const getTournamentBracket = async (tournamentId: number) => {
+export const getTournamentBracket = async (
+  tournamentId: number,
+  viewer: BracketViewer
+) => {
   const context = await getTournamentScheduleContext(tournamentId);
 
   if (!context) {
     throw new Error("Tournament not found.");
+  }
+
+  const normalizedRole = viewer.role.trim().toLowerCase();
+  const isOrganizerRole = normalizedRole === "organizer" || normalizedRole === "organize";
+
+  if (isOrganizerRole && viewer.userId !== context.createdBy) {
+    throw new Error("Access denied.");
   }
 
   const matches = await getBracketByTournament(tournamentId);

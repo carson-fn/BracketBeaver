@@ -79,8 +79,16 @@ export const generateTournamentApi = async (tournamentId: number) => {
   return handleJson<{ success: boolean; generatedMatches: number }>(response);
 };
 
-export const getBracketApi = async (tournamentId: number) => {
-  const response = await fetch(`/api/tournaments/${tournamentId}/bracket`);
+export const getBracketApi = async (
+  tournamentId: number,
+  viewer: { userId: number; role: string }
+) => {
+  const params = new URLSearchParams({
+    userId: String(viewer.userId),
+    role: viewer.role,
+  });
+
+  const response = await fetch(`/api/tournaments/${tournamentId}/bracket?${params.toString()}`);
   return handleJson<BracketResponse>(response);
 };
 

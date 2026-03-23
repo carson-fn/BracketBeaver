@@ -3,7 +3,7 @@ import cors from "cors";
 import authRoutes from "./routes/authRoute.js";
 import tournamentRoutes from "./routes/tournamentRoute.js";
 import { ensureDatabaseSchema } from "./database/database.js";
-import geminiRoutes from "./routes/geminiRoute.js";
+// import geminiRoutes from "./routes/geminiRoute.js";
 
 
 const app = express();
@@ -40,4 +40,4 @@ startServer().catch((error) => {
     console.error("Failed to start server:", error);
     process.exit(1);
 });
-app.use("/api", geminiRoutes);
+// app.use("/api", geminiRoutes);
