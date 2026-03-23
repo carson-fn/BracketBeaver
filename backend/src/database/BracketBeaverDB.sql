@@ -7,13 +7,13 @@ CREATE DATABASE bracket_beaver;
 CREATE TABLE users (
     userID SERIAL PRIMARY KEY,
     username VARCHAR(30) NOT NULL UNIQUE,
-    password VARCHAR(30) NOT NULL,
+    password VARCHAR(60) NOT NULL,
     role VARCHAR(20) NOT NULL
 );
 
 INSERT INTO users (username, password, role) VALUES
-('alice', 'alice123', 'organizer'),
-('admin', 'admin123', 'admin');
+('alice', '$2a$10$5X1e7OOhqfXzc0O8t.eqLOd4Ov/TmXN9H1dKGXqh2QLN1Y8Z8z6qa', 'organizer'),
+('admin', '$2a$10$1R3Aj3LQ8Y7VYu8/5xGbL.5oX1YnbXlZ5Y5/5pD5V8F0K3K1K2K3K', 'admin');
 
 CREATE TABLE tournaments (
     tournamentID SERIAL PRIMARY KEY,

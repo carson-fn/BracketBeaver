@@ -20,6 +20,13 @@ export const ensureDatabaseSchema = async (): Promise<void> => {
   }
 
   schemaReadyPromise = (async () => {
+    // Migrate password column size from 30 to 60 characters
+    await pool.query(
+      `ALTER TABLE users ALTER COLUMN password TYPE VARCHAR(60)`
+    ).catch(() => {
+      // Column might already be the correct size, ignore error
+    });
+
     await pool.query(
       `ALTER TABLE matches ALTER COLUMN home_team_id DROP NOT NULL`
     );
