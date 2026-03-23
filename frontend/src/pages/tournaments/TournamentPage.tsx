@@ -6,6 +6,7 @@ import {
   updateMatchResultApi,
   type BracketResponse,
 } from "../../api/tournamentApi";
+import SummarySection from "./components/SummarySection";
 import "./styles/tournamentStyles.css";
 import Export from "./components/export";
 
@@ -268,6 +269,11 @@ function TournamentPage() {
     }
   };
 
+  const isBracketComplete = useMemo(() => {
+    if (!bracket) return false;
+    return bracket.rounds.every((round) => round.matches.every((match) => match.status === "completed"));
+  }, [bracket]);
+
   return (
     <div className="tournament-page">
       <section className="tournament-panel">
@@ -433,6 +439,7 @@ function TournamentPage() {
                 </p>
                 <p className="export-branding">Created with Bracket Beaver</p>
               </div>
+              <SummarySection tournamentId={currentTournamentId} isComplete={isBracketComplete} />
             </div>
 
             <div className="rounds-row">

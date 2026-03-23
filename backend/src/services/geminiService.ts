@@ -18,7 +18,13 @@ if (!apiKey) {
   gemini = new GoogleGenerativeAI(apiKey);
 }
 
-export const runPrompt = async (prompt: string) => {
+export type GeminiPromptResult = {
+  text: string;
+  model: string;
+  tokensUsed?: number;
+};
+
+export const runPrompt = async (prompt: string): Promise<GeminiPromptResult> => {
   if (!gemini) {
     throw new Error("Gemini API key not configured");
   }
@@ -29,7 +35,11 @@ export const runPrompt = async (prompt: string) => {
     // Send the prompt
     const result = await model.generateContent(prompt);
     const text = result.response.text();
+    const tokensUsed = result.response.usageMetadata?.totalTokenCount;
 
+    if (tokensUsed !== undefined) {
+      return { text, model: modelName, tokensUsed };
+    }
     return { text, model: modelName };
 
   } catch (err: unknown) {

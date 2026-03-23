@@ -106,3 +106,16 @@ export const updateMatchResultApi = async (
 
   return handleJson<{ success: boolean; winnerTeamId: number }>(response);
 };
+
+export const generateTournamentSummaryApi = async (tournamentId: number) => {
+  const response = await fetch(`/api/tournaments/${tournamentId}/summary`, {
+    method: "POST",
+  });
+
+  return handleJson<{
+    success: boolean;
+    summary: string;
+    model: string;
+    tokensUsed?: number;
+  }>(response);
+};
