@@ -8,8 +8,15 @@ function LandingPage() {
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
-  const handleGuest = async () => {
-    setMessage(await callHelloAPI());
+  const handleGuest = () => {
+    localStorage.setItem(
+      "bb-user",
+      JSON.stringify({
+        username: "Guest",
+        role: "guest",
+      })
+    );
+    navigate("/tournaments");
   };
 
   const handleLogin = () => {

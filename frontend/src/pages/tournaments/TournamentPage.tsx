@@ -47,7 +47,8 @@ function TournamentPage() {
     }
   }, []);
 
-  const creatorId = storedUser?.userid ?? 1;
+  const isGuest = storedUser?.role === "guest";
+  const creatorId = isGuest ? null : storedUser?.userid ?? 1;
   const teamList = form.teamsText.split("\n").map((value) => value.trim()).filter(Boolean);
   const venueList = form.venuesText.split("\n").map((value) => value.trim()).filter(Boolean);
 
@@ -62,6 +63,18 @@ function TournamentPage() {
     setIsBusy(true);
     setError("");
     setMessage("");
+
+    if (isGuest){
+      setError("Guests cannot create tournaments. Please log in to create and manage your tournaments.");
+      setMessage("You can still load and view existing tournaments as a guest.");
+      return;
+    }
+
+    if (creatorId === null) {
+      setError("No valid user found. Please log in again.");
+      setMessage("");
+      return;
+    }
 
     try {
       const createResponse = await createTournamentApi({
@@ -118,6 +131,11 @@ function TournamentPage() {
   };
 
   const handleSubmitResult = async (matchId: number) => {
+    if (isGuest) {
+      setError("Guests cannot submit match results. Please log in to manage tournament progress.");
+      return;
+    }
+    
     if (!currentTournamentId) {
       setError("No tournament is loaded.");
       return;
@@ -151,6 +169,11 @@ function TournamentPage() {
     matchId: number,
     winner: "home" | "away"
   ) => {
+    if (isGuest) {
+      setError("Guests cannot submit match results. Please log in to manage tournaments");
+      return;
+    }
+
     if (!currentTournamentId) {
       setError("No tournament is loaded.");
       return;
@@ -184,7 +207,8 @@ function TournamentPage() {
             Create a tournament, generate its bracket, and submit results to advance winners.
           </p>
           <p className="panel-copy muted">
-            Active user: {storedUser?.username ?? "Demo organizer"} (creator id {creatorId})
+            Active user: {storedUser?.username ?? "Demo organizer"}
+            {!isGuest && creatorId !== null ? `creator id ${creatorId})` : "(read-only)"}
           </p>
         </div>
 
@@ -256,8 +280,8 @@ function TournamentPage() {
         </div>
 
         <div className="button-row">
-          <button onClick={handleCreateTournament} disabled={isBusy}>
-            {isBusy ? "Working..." : "Create and Generate"}
+          <button onClick={handleCreateTournament} disabled={isBusy || isGuest}>
+            {isGuest ? "Guests can't create tournaments" : isBusy ? "Working..." : "Create and Generate"}
           </button>
 
           <input
@@ -312,6 +336,7 @@ function TournamentPage() {
                   {round.matches.map((match) => {
                     const draft = scoreDrafts[match.matchId] ?? { homeScore: "", awayScore: "" };
                     const canSubmit =
+                      !isGuest &&
                       match.homeTeam.id !== null &&
                       match.awayTeam.id !== null &&
                       match.status !== "completed";
