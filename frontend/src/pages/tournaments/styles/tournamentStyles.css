@@ -313,4 +313,8 @@ button.secondary {
 
 .bracket-export-area {
   background: #ffffff;
+  padding: 24px;
+  border-radius: 18px;
+  box-sizing: border-box;
+  min-width: max-content;
 }
