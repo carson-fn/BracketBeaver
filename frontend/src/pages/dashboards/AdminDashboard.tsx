@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./styles/Dashboard.css";
-import { getUserListApi, deleteUserApi, updateUserApi } from "../../api/userApi";
+import {
+  getUserListApi,
+  deleteUserApi,
+  updateUserApi,
+} from "../../api/userApi";
 import {
   getTournamentsApi,
   deleteTournamentApi,
@@ -169,12 +173,18 @@ export default function AdminDashboard() {
     }
 
     try {
-      const result = await updateUserApi(selectedUserId, editUsername, editPassword);
+      const result = await updateUserApi(
+        selectedUserId,
+        editUsername,
+        editPassword,
+      );
       if (result.success) {
         setUsers(
           users.map((u) =>
-            u.id === selectedUserId ? { ...u, username: result.user.username } : u
-          )
+            u.id === selectedUserId
+              ? { ...u, username: result.user.username }
+              : u,
+          ),
         );
         setEditSuccess("User profile updated successfully!");
         setTimeout(() => setSelectedUserId(null), 1500);
@@ -191,7 +201,9 @@ export default function AdminDashboard() {
           <div>
             <h2>My Profile</h2>
             {profileError && <p style={{ color: "red" }}>{profileError}</p>}
-            {profileSuccess && <p style={{ color: "green" }}>{profileSuccess}</p>}
+            {profileSuccess && (
+              <p style={{ color: "green" }}>{profileSuccess}</p>
+            )}
             <div style={{ marginBottom: "20px" }}>
               <h3>Admin: {user?.username}</h3>
               <input
@@ -249,12 +261,11 @@ export default function AdminDashboard() {
                 }}
               >
                 <h3>
-                  Edit User: {users.find((u) => u.id === selectedUserId)?.username}
+                  Edit User:{" "}
+                  {users.find((u) => u.id === selectedUserId)?.username}
                 </h3>
                 {editError && <p style={{ color: "red" }}>{editError}</p>}
-                {editSuccess && (
-                  <p style={{ color: "green" }}>{editSuccess}</p>
-                )}
+                {editSuccess && <p style={{ color: "green" }}>{editSuccess}</p>}
                 <input
                   className="search-input"
                   placeholder="New Username"
@@ -307,9 +318,7 @@ export default function AdminDashboard() {
                     <p>Role: {u.role}</p>
                     <button
                       className="card-action-button mt-2"
-                      onClick={() =>
-                        handleSelectUserForEdit(u.id, u.username)
-                      }
+                      onClick={() => handleSelectUserForEdit(u.id, u.username)}
                     >
                       Edit
                     </button>
@@ -417,7 +426,10 @@ export default function AdminDashboard() {
         </button>
 
         <div className="sidebar-bottom">
-          <button className="button-create" onClick={() => navigate("/tournament")}>
+          <button
+            className="button-create"
+            onClick={() => navigate("/tournaments")}
+          >
             + Create Bracket
           </button>
           <button
