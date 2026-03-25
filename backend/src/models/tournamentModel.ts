@@ -89,6 +89,15 @@ export type MatchRecord = {
   status: "pending" | "completed";
 };
 
+export type TeamRecentMatch = {
+  matchid: number;
+  opponent: string;
+  team_score: number;
+  opponent_score: number;
+  result: "W" | "L";
+  match_time: string;
+};
+
 const query = async <T extends QueryResultRow>(
   executor: DbExecutor,
   sql: string,
@@ -439,4 +448,59 @@ export const resetMatchOutcome = async (
      WHERE matchID = $1`,
     [matchId]
   );
+};
+
+export const countCompletedMatchesForTeam = async (
+  tournamentId: number,
+  teamId: number,
+  executor: DbExecutor = pool
+): Promise<number> => {
+  const result = await query<{ count: string }>(
+    executor,
+    `SELECT COUNT(*)::text AS count
+     FROM matches
+     WHERE tournamentID = $1
+       AND status = 'completed'
+       AND (
+         home_team_id = $2 OR away_team_id = $2
+       )`,
+    [tournamentId, teamId]
+  );
+
+  const row = result.rows[0];
+  return row ? Number(row.count) : 0;
+};
+
+export const getRecentCompletedMatchesForTeam = async (
+  tournamentId: number,
+  teamId: number,
+  limit: number,
+  executor: DbExecutor = pool
+): Promise<TeamRecentMatch[]> => {
+  const result = await query<TeamRecentMatch>(
+    executor,
+    `SELECT
+       m.matchID AS matchid,
+       CASE WHEN m.home_team_id = $2 THEN away_team.name ELSE home_team.name END AS opponent,
+       CASE WHEN m.home_team_id = $2 THEN m.home_score ELSE m.away_score END AS team_score,
+       CASE WHEN m.home_team_id = $2 THEN m.away_score ELSE m.home_score END AS opponent_score,
+       CASE
+         WHEN m.home_score IS NULL OR m.away_score IS NULL THEN 'L'
+         WHEN (m.home_team_id = $2 AND m.home_score > m.away_score)
+           OR (m.away_team_id = $2 AND m.away_score > m.home_score) THEN 'W'
+         ELSE 'L'
+       END AS result,
+       m.match_time::text AS match_time
+     FROM matches m
+     LEFT JOIN teams home_team ON m.home_team_id = home_team.teamID
+     LEFT JOIN teams away_team ON m.away_team_id = away_team.teamID
+     WHERE m.tournamentID = $1
+       AND m.status = 'completed'
+       AND (m.home_team_id = $2 OR m.away_team_id = $2)
+     ORDER BY m.match_time DESC, m.matchID DESC
+     LIMIT $3`,
+    [tournamentId, teamId, limit]
+  );
+
+  return result.rows;
 };
