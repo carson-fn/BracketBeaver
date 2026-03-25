@@ -103,6 +103,26 @@ export const createTournamentWithDetails = async (
   try {
     await client.query("BEGIN");
 
+    // Validate that the user exists before creating tournament
+    console.log("Tournament model: Checking if user exists with ID:", input.createdBy);
+    
+    const userCheck = await client.query(
+      "SELECT userID FROM users WHERE userID = $1",
+      [input.createdBy]
+    );
+
+    console.log("Tournament model: User check query returned", userCheck.rows.length, "rows");
+    console.log("Tournament model: Query result:", userCheck.rows);
+
+    if (userCheck.rows.length === 0) {
+      console.log("Tournament model: User NOT found. Fetching all users for debugging...");
+      const allUsers = await client.query("SELECT userID, username FROM users");
+      console.log("Tournament model: All users in database:", allUsers.rows);
+      throw new Error(`User with ID ${input.createdBy} does not exist.`);
+    }
+
+    console.log("Tournament model: User found, proceeding with tournament creation");
+
     const tournamentResult = await client.query<{ tournamentid: number }>(
       `INSERT INTO tournaments (name, sport, bracket_type, start_date, end_date, created_by)
        VALUES ($1, $2, $3, $4, $5, $6)

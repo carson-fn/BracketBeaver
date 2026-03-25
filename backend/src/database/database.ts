@@ -6,6 +6,7 @@ if (process.env.NODE_ENV !== "production") {
   dotenv.config();
 }
 
+
 // DB connection pool
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

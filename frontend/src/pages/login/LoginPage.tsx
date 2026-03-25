@@ -13,26 +13,47 @@ function LoginPage() {
     navigate("/");
   };
 
-
   const handleLogin = async () => {
     try {
+      console.log("LOGIN: Attempting with username:", username);
       const res = await callLoginAPI(username, password);
+      
+      console.log("LOGIN: Response from server:", res);
+      console.log("LOGIN: res.success =", res.success);
 
       if (res.success) {
+        console.log("LOGIN: Success! User object:", res.user);
+        // Store user FIRST before redirecting
         localStorage.setItem("bb-user", JSON.stringify(res.user));
+        console.log("LOGIN: Stored in localStorage:", localStorage.getItem("bb-user"));
         setMessage("Welcome back! 🦫");
-        navigate("/tournaments");
+        
+        // Then redirect based on role
+        if (res.user.role === "admin") {
+          console.log("LOGIN: Redirecting to /admin");
+          window.location.href = "/admin";
+        } else if (res.user.role === "organizer") {
+          console.log("LOGIN: Redirecting to /organizer");
+          window.location.href = "/organizer";
+        } else {
+          console.log("LOGIN: Navigating to /tournaments");
+          navigate("/tournaments");
+        }
       } else {
+        console.log("LOGIN: Failed - res.success is false");
         setMessage("Invalid credentials");
       }
-    } catch {
+    } catch (error) {
+      console.error("LOGIN: Caught error:", error);
       setMessage("Server error");
     }
   };
 
   return (
     <div className="login-page">
-      <button className="back-button" onClick={handleBack}>Back</button>
+      <button className="back-button" onClick={handleBack}>
+        Back
+      </button>
       <div className="login-card">
         <h1 className="login-title">Login</h1>
 
@@ -56,7 +77,9 @@ function LoginPage() {
           Login
         </button>
 
-        <p>Don't have a account? <a href="/signup">Sign up!</a></p>
+        <p>
+          Don't have a account? <a href="/signup">Sign up!</a>
+        </p>
 
         <p className="login-message">{message}</p>
       </div>

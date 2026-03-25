@@ -7,13 +7,13 @@ CREATE DATABASE bracket_beaver;
 CREATE TABLE users (
     userID SERIAL PRIMARY KEY,
     username VARCHAR(30) NOT NULL UNIQUE,
-    password VARCHAR(30) NOT NULL,
+    password VARCHAR(60) NOT NULL,
     role VARCHAR(20) NOT NULL
 );
 
 INSERT INTO users (username, password, role) VALUES
-('alice', 'alice123', 'organizer'),
-('admin', 'admin123', 'admin');
+('alice', '$2a$10$MQlg9jWGXKYtX.opBRS0CuSmEkGQarD694GNTE1HZ/sxztLYXccBa', 'organizer'),
+('admin', '$2a$10$Xw.UkUsiTZnq76f553.7lOplSlWa0GI1sMpeoahl6jw88Y6JV2R2.', 'admin');
 
 CREATE TABLE tournaments (
     tournamentID SERIAL PRIMARY KEY,
@@ -67,4 +67,3 @@ CREATE TABLE matches (
 
 CREATE INDEX matches_home_source_idx ON matches (home_source_match_id);
 CREATE INDEX matches_away_source_idx ON matches (away_source_match_id);
-
