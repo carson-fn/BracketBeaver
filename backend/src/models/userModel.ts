@@ -18,10 +18,14 @@ export const findUserById = async (userId: number) => {
   return result.rows[0];
 };
 
-export const createUser = async (username: string, hashedPassword: string) => {
+export const createUser = async (
+  username: string,
+  hashedPassword: string,
+  role: string = "organizer"
+) => {
   await pool.query(
     "INSERT INTO users (username, password, role) VALUES ($1, $2, $3)",
-    [username, hashedPassword, "organizer"]
+    [username, hashedPassword, role]
   );
 };
 
