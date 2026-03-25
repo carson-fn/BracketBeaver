@@ -5,6 +5,8 @@ import {
   generateTournamentApi,
   getBracketApi,
   updateMatchResultApi,
+  predictMatchApi,
+  type MatchPrediction,
   type BracketResponse,
 } from "../../api/tournamentApi";
 import SummarySection from "./components/SummarySection";
@@ -45,6 +47,16 @@ function TournamentPage() {
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [scoreDrafts, setScoreDrafts] = useState<ScoreDrafts>({});
+  const [predictions, setPredictions] = useState<
+    Record<
+      number,
+      {
+        loading: boolean;
+        result?: MatchPrediction;
+        error?: string;
+      }
+    >
+  >({});
 
   const storedUser = useMemo(() => {
     const raw = localStorage.getItem("bb-user");
@@ -93,6 +105,7 @@ function TournamentPage() {
     setBracket(response.bracket);
     setCurrentTournamentId(tournamentId);
     setScoreDrafts({});
+    setPredictions({});
 
     const nextUrl = `${window.location.pathname}?id=${tournamentId}`;
     window.history.replaceState({}, "", nextUrl);
@@ -300,6 +313,52 @@ function TournamentPage() {
     return bracket.rounds.every((round) => round.matches.every((match) => match.status === "completed"));
   }, [bracket]);
 
+  const completedCounts = useMemo(() => {
+    const counts: Record<number, number> = {};
+
+    bracket?.rounds.forEach((round) => {
+      round.matches.forEach((match) => {
+        if (match.status === "completed") {
+          if (match.homeTeam.id !== null) {
+            counts[match.homeTeam.id] = (counts[match.homeTeam.id] ?? 0) + 1;
+          }
+          if (match.awayTeam.id !== null) {
+            counts[match.awayTeam.id] = (counts[match.awayTeam.id] ?? 0) + 1;
+          }
+        }
+      });
+    });
+
+    return counts;
+  }, [bracket]);
+
+  const handlePredictMatch = async (matchId: number) => {
+    if (!currentTournamentId) {
+      setError("No tournament is loaded.");
+      return;
+    }
+
+    setPredictions((current) => ({
+      ...current,
+      [matchId]: { loading: true },
+    }));
+
+    try {
+      const response = await predictMatchApi(currentTournamentId, matchId);
+      setPredictions((current) => ({
+        ...current,
+        [matchId]: { loading: false, result: response.prediction },
+      }));
+    } catch (caughtError) {
+      const message =
+        caughtError instanceof Error ? caughtError.message : "Failed to get prediction.";
+      setPredictions((current) => ({
+        ...current,
+        [matchId]: { loading: false, error: message },
+      }));
+    }
+  };
+
   return (
     <div className="tournament-page">
       {!storedUser && (
@@ -491,6 +550,15 @@ function TournamentPage() {
                       match.awayTeam.id !== null &&
                       match.status !== "completed";
 
+                    const homeCompleted = match.homeTeam.id ? completedCounts[match.homeTeam.id] ?? 0 : 0;
+                    const awayCompleted = match.awayTeam.id ? completedCounts[match.awayTeam.id] ?? 0 : 0;
+                    const predictionState = predictions[match.matchId];
+                    const canPredict =
+                      match.status === "pending" &&
+                      match.homeTeam.id !== null &&
+                      match.awayTeam.id !== null;
+                    const predictionEligible = homeCompleted >= 1 && awayCompleted >= 1;
+
                     return (
                       <article className="match-card" key={match.matchId}>
                         <div className="match-card__top">
@@ -582,6 +650,36 @@ function TournamentPage() {
                             >
                               {match.awayTeam.name} wins
                             </button>
+                          </div>
+                        ) : null}
+
+                        {canPredict ? (
+                          <div className="prediction-row">
+                            <button
+                              className="secondary"
+                              onClick={() => handlePredictMatch(match.matchId)}
+                              disabled={predictionState?.loading || !predictionEligible}
+                            >
+                              {predictionState?.loading ? "Predicting..." : "Predict score"}
+                            </button>
+                            <span className="muted">
+                              {predictionEligible
+                                ? "Uses Gemini; needs recent games."
+                                : "Both teams need ≥1 completed game."}
+                            </span>
+                            {predictionState?.error ? (
+                              <p className="status-message error" style={{ marginTop: "8px" }}>
+                                {predictionState.error}
+                              </p>
+                            ) : null}
+                            {predictionState?.result ? (
+                              <div className="prediction-result">
+                                <p>
+                                  Predicted: {match.homeTeam.name} {predictionState.result.homeScore} – {predictionState.result.awayScore} {match.awayTeam.name}
+                                </p>
+                                <p className="muted">{predictionState.result.reason}</p>
+                              </div>
+                            ) : null}
                           </div>
                         ) : null}
                       </article>

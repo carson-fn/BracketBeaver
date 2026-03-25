@@ -125,6 +125,22 @@ export const deleteTournamentApi = async (tournamentId: number) => {
   return handleJson<{ success: boolean }>(response);
 };
 
+export type MatchPrediction = {
+  homeScore: number;
+  awayScore: number;
+  reason: string;
+  model: string;
+  tokensUsed?: number;
+};
+
+export const predictMatchApi = async (tournamentId: number, matchId: number) => {
+  const response = await fetch(getApiUrl(`/api/tournaments/${tournamentId}/matches/${matchId}/predict`), {
+    method: "POST",
+  });
+
+  return handleJson<{ success: boolean; prediction: MatchPrediction }>(response);
+};
+
 export const generateTournamentSummaryApi = async (tournamentId: number) => {
   const response = await fetch(`/api/tournaments/${tournamentId}/summary`, {
     method: "POST",
