@@ -50,7 +50,13 @@ export type BracketResponse = {
 };
 
 const handleJson = async <T>(response: Response): Promise<T> => {
-  const data = (await response.json()) as T & { message?: string; success?: boolean };
+  let data: any = {};
+
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error("No tournament found with that ID.");
+  }
 
   if (!response.ok) {
     throw new Error(data.message ?? "Request failed.");
@@ -117,4 +123,17 @@ export const deleteTournamentApi = async (tournamentId: number) => {
     method: "DELETE",
   });
   return handleJson<{ success: boolean }>(response);
+};
+
+export const generateTournamentSummaryApi = async (tournamentId: number) => {
+  const response = await fetch(`/api/tournaments/${tournamentId}/summary`, {
+    method: "POST",
+  });
+
+  return handleJson<{
+    success: boolean;
+    summary: string;
+    model: string;
+    tokensUsed?: number;
+  }>(response);
 };

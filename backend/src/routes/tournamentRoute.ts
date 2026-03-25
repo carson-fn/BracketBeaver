@@ -8,6 +8,7 @@ import {
   getTournamentsHandler,
   deleteTournamentHandler,
 } from "../controllers/tournamentController.js";
+import { generateTournamentSummaryHandler } from "../controllers/tournamentSummaryController.js";
 
 const router = express.Router();
 
@@ -18,5 +19,6 @@ router.post("/tournaments/:id/schedule/generate", generateScheduleHandler);
 router.get("/tournaments/:id/schedule", getScheduleHandler);
 router.get("/tournaments/:id/bracket", getBracketHandler);
 router.patch("/tournaments/:id/matches/:matchId/result", updateMatchResultHandler);
+router.post("/tournaments/:id/summary", generateTournamentSummaryHandler);
 
 export default router;

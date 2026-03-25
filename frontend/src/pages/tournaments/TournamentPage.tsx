@@ -7,7 +7,9 @@ import {
   updateMatchResultApi,
   type BracketResponse,
 } from "../../api/tournamentApi";
+import SummarySection from "./components/SummarySection";
 import "./styles/tournamentStyles.css";
+import Export from "./components/export";
 
 type StoredUser = {
   userid?: number;
@@ -15,7 +17,13 @@ type StoredUser = {
   role?: string;
 };
 
-type ScoreDrafts = Record<number, { homeScore: string; awayScore: string }>;
+type ScoreDrafts = Record<
+  number,
+  {
+    homeScore: string;
+    awayScore: string;
+  }
+>;
 
 const defaultForm = {
   name: "Spring Championship",
@@ -38,7 +46,7 @@ function TournamentPage() {
   const [isBusy, setIsBusy] = useState(false);
   const [scoreDrafts, setScoreDrafts] = useState<ScoreDrafts>({});
 
-  const storedUser = useMemo<StoredUser | null>(() => {
+  const storedUser = useMemo(() => {
     const raw = localStorage.getItem("bb-user");
     if (!raw) return null;
 
@@ -49,7 +57,8 @@ function TournamentPage() {
     }
   }, []);
 
-  const creatorId = storedUser?.id ?? 1;
+  const isGuest = storedUser?.role === "guest";
+  const creatorId = isGuest ? null : storedUser?.userid ?? 1;
   
   // Debug logging
   useEffect(() => {
@@ -68,20 +77,77 @@ function TournamentPage() {
     }
   }, [tournamentIdParam]);
 
-  const teamList = form.teamsText.split("\n").map((value) => value.trim()).filter(Boolean);
-  const venueList = form.venuesText.split("\n").map((value) => value.trim()).filter(Boolean);
+
+  const teamList = form.teamsText
+    .split("\n")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const venueList = form.venuesText
+    .split("\n")
+    .map((value) => value.trim())
+    .filter(Boolean);
 
   const refreshBracket = async (tournamentId: number) => {
     const response = await getBracketApi(tournamentId);
     setBracket(response.bracket);
     setCurrentTournamentId(tournamentId);
     setScoreDrafts({});
+
+    const nextUrl = `${window.location.pathname}?id=${tournamentId}`;
+    window.history.replaceState({}, "", nextUrl);
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const idFromUrl = params.get("id");
+
+    if (!idFromUrl) return;
+
+    const tournamentId = Number(idFromUrl);
+
+    if (!Number.isInteger(tournamentId) || tournamentId <= 0) return;
+
+    setLoadTournamentId(String(tournamentId));
+
+    const loadFromLink = async () => {
+      setIsBusy(true);
+      setError("");
+      setMessage("");
+
+      try {
+        await refreshBracket(tournamentId);
+        setMessage(`Loaded tournament ${tournamentId} from shared link.`);
+      } catch (caughtError) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Failed to load shared bracket."
+        );
+      } finally {
+        setIsBusy(false);
+      }
+    };
+
+    loadFromLink();
+  }, []);
 
   const handleCreateTournament = async () => {
     setIsBusy(true);
     setError("");
     setMessage("");
+
+    if (isGuest){
+      setError("Guests cannot create tournaments. Please log in to create and manage your tournaments.");
+      setMessage("You can still load and view existing tournaments as a guest.");
+      return;
+    }
+
+    if (creatorId === null) {
+      setError("No valid user found. Please log in again.");
+      setMessage("");
+      return;
+    }
 
     try {
       const payload = {
@@ -103,9 +169,14 @@ function TournamentPage() {
 
       await generateTournamentApi(createResponse.tournamentId);
       await refreshBracket(createResponse.tournamentId);
+
       setMessage(`Tournament ${createResponse.tournamentId} created and generated.`);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Failed to create tournament.");
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Failed to create tournament."
+      );
     } finally {
       setIsBusy(false);
     }
@@ -113,6 +184,7 @@ function TournamentPage() {
 
   const handleLoadBracket = async () => {
     const tournamentId = Number(loadTournamentId);
+
     if (!Number.isInteger(tournamentId) || tournamentId <= 0) {
       setError("Enter a valid tournament id to load.");
       return;
@@ -126,13 +198,21 @@ function TournamentPage() {
       await refreshBracket(tournamentId);
       setMessage(`Loaded tournament ${tournamentId}.`);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Failed to load bracket.");
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Failed to load bracket."
+      );
     } finally {
       setIsBusy(false);
     }
   };
 
-  const handleScoreChange = (matchId: number, side: "homeScore" | "awayScore", value: string) => {
+  const handleScoreChange = (
+    matchId: number,
+    side: "homeScore" | "awayScore",
+    value: string
+  ) => {
     setScoreDrafts((current) => ({
       ...current,
       [matchId]: {
@@ -144,6 +224,11 @@ function TournamentPage() {
   };
 
   const handleSubmitResult = async (matchId: number) => {
+    if (isGuest) {
+      setError("Guests cannot submit match results. Please log in to manage tournament progress.");
+      return;
+    }
+    
     if (!currentTournamentId) {
       setError("No tournament is loaded.");
       return;
@@ -167,16 +252,22 @@ function TournamentPage() {
       await refreshBracket(currentTournamentId);
       setMessage(`Updated result for match ${matchId}.`);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Failed to update result.");
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Failed to update result."
+      );
     } finally {
       setIsBusy(false);
     }
   };
 
-  const handleQuickAdvance = async (
-    matchId: number,
-    winner: "home" | "away"
-  ) => {
+  const handleQuickAdvance = async (matchId: number, winner: "home" | "away") => {
+    if (isGuest) {
+      setError("Guests cannot submit match results. Please log in to manage tournaments");
+      return;
+    }
+
     if (!currentTournamentId) {
       setError("No tournament is loaded.");
       return;
@@ -194,11 +285,20 @@ function TournamentPage() {
       await refreshBracket(currentTournamentId);
       setMessage(`Advanced winner for match ${matchId}.`);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Failed to advance winner.");
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Failed to advance winner."
+      );
     } finally {
       setIsBusy(false);
     }
   };
+
+  const isBracketComplete = useMemo(() => {
+    if (!bracket) return false;
+    return bracket.rounds.every((round) => round.matches.every((match) => match.status === "completed"));
+  }, [bracket]);
 
   return (
     <div className="tournament-page">
@@ -209,32 +309,38 @@ function TournamentPage() {
       )}
       
       <section className="tournament-panel">
-        <div>
-          <p className="eyebrow">Bracket Builder</p>
-          <h1>Single-Elimination and Round-Robin Tournaments</h1>
-          <p className="panel-copy">
-            Create a tournament, generate its bracket, and submit results to advance winners.
-          </p>
-          <p className="panel-copy muted">
-            Active user: {storedUser?.username ?? "Demo organizer"} (creator id {creatorId})
-          </p>
-        </div>
+        <p className="eyebrow">Bracket Builder</p>
+        <h1>Single-Elimination and Round-Robin Tournaments</h1>
+        <p className="panel-copy muted">
+          Create a tournament, generate its bracket, and submit results to advance
+          winners.
+        </p>
+        <p className="panel-copy">
+          Active user: {storedUser?.username ?? "Demo organizer"}
+            {!isGuest && creatorId !== null ? `, creator id: ${creatorId}` : "(read-only)"}
+        </p>
 
         <div className="form-grid">
           <label>
             Tournament Name
             <input
               value={form.name}
-              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, name: event.target.value }))
+              }
             />
           </label>
+
           <label>
             Sport
             <input
               value={form.sport}
-              onChange={(event) => setForm((current) => ({ ...current, sport: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, sport: event.target.value }))
+              }
             />
           </label>
+
           <label>
             Bracket Type
             <select
@@ -242,7 +348,9 @@ function TournamentPage() {
               onChange={(event) =>
                 setForm((current) => ({
                   ...current,
-                  bracketType: event.target.value as "single_elimination" | "round_robin",
+                  bracketType: event.target.value as
+                    | "single_elimination"
+                    | "round_robin",
                 }))
               }
             >
@@ -250,20 +358,26 @@ function TournamentPage() {
               <option value="round_robin">Round robin</option>
             </select>
           </label>
+
           <label>
             Start Date
             <input
               type="date"
               value={form.startDate}
-              onChange={(event) => setForm((current) => ({ ...current, startDate: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, startDate: event.target.value }))
+              }
             />
           </label>
+
           <label>
             End Date
             <input
               type="date"
               value={form.endDate}
-              onChange={(event) => setForm((current) => ({ ...current, endDate: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, endDate: event.target.value }))
+              }
             />
           </label>
         </div>
@@ -273,23 +387,34 @@ function TournamentPage() {
             Teams (one per line)
             <textarea
               value={form.teamsText}
-              onChange={(event) => setForm((current) => ({ ...current, teamsText: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  teamsText: event.target.value,
+                }))
+              }
               rows={8}
             />
           </label>
+
           <label>
             Venues (one per line)
             <textarea
               value={form.venuesText}
-              onChange={(event) => setForm((current) => ({ ...current, venuesText: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  venuesText: event.target.value,
+                }))
+              }
               rows={8}
             />
           </label>
         </div>
 
         <div className="button-row">
-          <button onClick={handleCreateTournament} disabled={isBusy}>
-            {isBusy ? "Working..." : "Create and Generate"}
+          <button onClick={handleCreateTournament} disabled={isBusy || isGuest}>
+            {isGuest ? "Guests can't create tournaments" : isBusy ? "Working..." : "Create and Generate"}
           </button>
 
           <input
@@ -300,6 +425,7 @@ function TournamentPage() {
             value={loadTournamentId}
             onChange={(event) => setLoadTournamentId(event.target.value)}
           />
+
           <button onClick={handleLoadBracket} disabled={isBusy}>
             Load Existing
           </button>
@@ -326,24 +452,41 @@ function TournamentPage() {
 
       <section className="bracket-section">
         {bracket ? (
-          <>
+          <Export
+            bracket={bracket}
+            isBusy={isBusy}
+            setIsBusy={setIsBusy}
+            setError={setError}
+            setMessage={setMessage}
+          >
             <div className="bracket-header">
               <div>
-                <p className="eyebrow">{bracket.tournament.bracketType.replaceAll("_", " ")}</p>
+                <p className="eyebrow">
+                  {bracket.tournament.bracketType.replaceAll("_", " ")}
+                </p>
                 <h2>{bracket.tournament.name}</h2>
                 <p className="panel-copy muted">
-                  {bracket.tournament.sport} • {bracket.tournament.startDate} to {bracket.tournament.endDate}
+                  {bracket.tournament.sport} • {bracket.tournament.startDate} to{" "}
+                  {bracket.tournament.endDate}
                 </p>
+                <p className="export-branding">Created with Bracket Beaver</p>
               </div>
+              <SummarySection tournamentId={currentTournamentId} isComplete={isBracketComplete} />
             </div>
 
             <div className="rounds-row">
               {bracket.rounds.map((round) => (
                 <div className="round-column" key={round.roundNumber}>
                   <h3>{round.name}</h3>
+
                   {round.matches.map((match) => {
-                    const draft = scoreDrafts[match.matchId] ?? { homeScore: "", awayScore: "" };
+                    const draft = scoreDrafts[match.matchId] ?? {
+                      homeScore: "",
+                      awayScore: "",
+                    };
+
                     const canSubmit =
+                      !isGuest &&
                       match.homeTeam.id !== null &&
                       match.awayTeam.id !== null &&
                       match.status !== "completed";
@@ -354,17 +497,29 @@ function TournamentPage() {
                           <div>
                             <strong>{match.label}</strong>
                             <p>
-                              {match.venue} • {new Date(match.matchTime).toLocaleString()}
+                              {match.venue} •{" "}
+                              {new Date(match.matchTime).toLocaleString()}
                             </p>
                           </div>
-                          <span className={`badge ${match.status}`}>{match.status}</span>
+                          <span className={`badge ${match.status}`}>
+                            {match.status}
+                          </span>
                         </div>
 
-                        <div className={`team-row ${match.winnerTeamId === match.homeTeam.id ? "winner" : ""}`}>
+                        <div
+                          className={`team-row ${
+                            match.winnerTeamId === match.homeTeam.id ? "winner" : ""
+                          }`}
+                        >
                           <span>{match.homeTeam.name}</span>
                           <span>{match.homeTeam.score ?? "—"}</span>
                         </div>
-                        <div className={`team-row ${match.winnerTeamId === match.awayTeam.id ? "winner" : ""}`}>
+
+                        <div
+                          className={`team-row ${
+                            match.winnerTeamId === match.awayTeam.id ? "winner" : ""
+                          }`}
+                        >
                           <span>{match.awayTeam.name}</span>
                           <span>{match.awayTeam.score ?? "—"}</span>
                         </div>
@@ -376,16 +531,31 @@ function TournamentPage() {
                               min="0"
                               placeholder="Home"
                               value={draft.homeScore}
-                              onChange={(event) => handleScoreChange(match.matchId, "homeScore", event.target.value)}
+                              onChange={(event) =>
+                                handleScoreChange(
+                                  match.matchId,
+                                  "homeScore",
+                                  event.target.value
+                                )
+                              }
                             />
                             <input
                               type="number"
                               min="0"
                               placeholder="Away"
                               value={draft.awayScore}
-                              onChange={(event) => handleScoreChange(match.matchId, "awayScore", event.target.value)}
+                              onChange={(event) =>
+                                handleScoreChange(
+                                  match.matchId,
+                                  "awayScore",
+                                  event.target.value
+                                )
+                              }
                             />
-                            <button onClick={() => handleSubmitResult(match.matchId)} disabled={isBusy}>
+                            <button
+                              onClick={() => handleSubmitResult(match.matchId)}
+                              disabled={isBusy}
+                            >
                               Save
                             </button>
                           </div>
@@ -396,14 +566,18 @@ function TournamentPage() {
                             <span>Quick advance:</span>
                             <button
                               className="secondary"
-                              onClick={() => handleQuickAdvance(match.matchId, "home")}
+                              onClick={() =>
+                                handleQuickAdvance(match.matchId, "home")
+                              }
                               disabled={isBusy}
                             >
                               {match.homeTeam.name} wins
                             </button>
                             <button
                               className="secondary"
-                              onClick={() => handleQuickAdvance(match.matchId, "away")}
+                              onClick={() =>
+                                handleQuickAdvance(match.matchId, "away")
+                              }
                               disabled={isBusy}
                             >
                               {match.awayTeam.name} wins
@@ -416,11 +590,14 @@ function TournamentPage() {
                 </div>
               ))}
             </div>
-          </>
+          </Export>
         ) : (
           <div className="empty-state">
             <h2>No bracket loaded yet</h2>
-            <p>Create a new tournament or load an existing one to see the generated bracket.</p>
+            <p>
+              Create a new tournament or load an existing one to see the generated
+              bracket.
+            </p>
           </div>
         )}
       </section>

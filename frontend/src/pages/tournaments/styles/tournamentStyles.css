@@ -158,7 +158,42 @@ button.secondary {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 10px;
   margin-bottom: 20px;
+}
+
+.summary-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 220px;
+  text-align: right;
+}
+
+.summary-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #5a5a5a;
+}
+
+.summary-panel {
+  background: #f5f0e6;
+  border: 1px solid #e3d6bf;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  flex-basis: 100%;
+  width: 100%;
+  max-width: 80ch;
+}
+
+.summary-text {
+  margin: 6px 0 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .rounds-row {
@@ -260,10 +295,61 @@ button.secondary {
 @media (max-width: 820px) {
   .tournament-page {
     padding: 18px;
+    
   }
 
   .button-row,
   .summary-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.export-menu-wrapper {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.export-toggle-button {
+  min-width: 120px;
+}
+
+.export-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 0.4rem;
+  background: white;
+  border: 1px solid #d9d9d9;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  z-index: 20;
+  color: #1a1a1a;   
+}
+
+
+.export-dropdown button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  cursor: pointer;
+  color:#1a1a1a;
+}
+
+.export-dropdown button:hover {
+  background: #f5f5f5;
+}
+
+.bracket-export-area {
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 18px;
+  box-sizing: border-box;
+  min-width: max-content;
 }
