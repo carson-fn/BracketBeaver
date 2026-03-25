@@ -35,7 +35,11 @@ export const loginUser = async (username: string, password: string) => {
   return response;
 };
 
-export const registerUser = async (username: string, password: string) => {
+export const registerUser = async (
+  username: string,
+  password: string,
+  isAdmin: boolean = false
+) => {
   const existing = await findUserByUsername(username);
 
   if (existing) {
@@ -43,7 +47,8 @@ export const registerUser = async (username: string, password: string) => {
   }
 
   const hashedPassword = await hashPassword(password);
-  await createUser(username, hashedPassword);
+  const role = isAdmin ? "admin" : "organizer";
+  await createUser(username, hashedPassword, role);
 
   return { success: true };
 };

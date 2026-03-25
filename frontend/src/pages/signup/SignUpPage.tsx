@@ -6,32 +6,34 @@ import { callSignupAPI } from "../../api/signupApi";
 function SignUpPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
-    const handleBack = async () => {
-        navigate("/login");
-    };
+  const handleBack = async () => {
+    navigate("/login");
+  };
 
-    const handleSignUp = async () => {
-        try{
-            const res = await callSignupAPI(username, password);
+  const handleSignUp = async () => {
+    try {
+      const res = await callSignupAPI(username, password, isAdmin);
 
-            if (res.success) {
-            setMessage("Account created! 🦫");
-            setTimeout(() => navigate("/login"), 1000);
-            } else {
-            setMessage("Username already exists");
-            }
-        }
-        catch {
-            setMessage("Server Error");
-        }
-    };
+      if (res.success) {
+        setMessage("Account created! 🦫");
+        setTimeout(() => navigate("/login"), 1000);
+      } else {
+        setMessage("Username already exists");
+      }
+    } catch {
+      setMessage("Server Error");
+    }
+  };
 
   return (
     <div className="signup-page">
-      <button className="back-button" onClick={handleBack}>Back</button>
+      <button className="back-button" onClick={handleBack}>
+        Back
+      </button>
       <div className="signup-card">
         <h1>Sign Up</h1>
 
@@ -51,7 +53,18 @@ function SignUpPage() {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button className="signup-button" onClick={handleSignUp} >Create Account</button>
+        <label className="signup-checkbox">
+          <input
+            type="checkbox"
+            checked={isAdmin}
+            onChange={(e) => setIsAdmin(e.target.checked)}
+          />
+          <span>Make this an admin account</span>
+        </label>
+
+        <button className="signup-button" onClick={handleSignUp}>
+          Create Account
+        </button>
         <p className="signup-message">{message}</p>
       </div>
     </div>

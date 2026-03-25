@@ -54,3 +54,17 @@ body {
   margin-top: 15px;
   color: #3E2C23;
 }
+
+.signup-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  color: #3E2C23;
+  font-size: 0.95rem;
+}
+
+.signup-checkbox input {
+  width: 16px;
+  height: 16px;
+}

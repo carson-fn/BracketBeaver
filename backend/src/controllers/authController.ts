@@ -27,9 +27,9 @@ export const login = async (req: Request, res: Response) => {
 
 export const signup = async (req: Request, res: Response) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, isAdmin = false } = req.body;
 
-    const result = await registerUser(username, password);
+    const result = await registerUser(username, password, isAdmin);
 
     if (result.success) {
       res.json(result);
