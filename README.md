@@ -29,6 +29,37 @@ cd ../backend
 npm install
 ```
 
+### 4. Set up the database
+- Make sure you have PostgreSQL installed and running.
+- Create a new database (example using psql):
+```
+createdb bracket_beaver
+```
+- Import the provided .sql file located in the repository:
+```
+psql -d bracket_beaver -f backend/src/database/BracketBeaverDB.sql
+```
+- Alternative - use pgAdmin to create the database and set up the tables with the same sql file above.
+#### There are two pre-made users in the BracketBeaverDB.sql schema
+1. - User: admin
+    - Password: admin123
+2. - User: alice
+    - Password: alice123
+
+### 5. Set up environment variables
+In the backend folder, create a .env file:
+```
+cd backend
+touch .env
+```
+Add the following variables to the .env file:
+```
+DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<database>
+GEMINI_API_KEY=your-api-key-here
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+Replace the placeholders with your respective values. (Note: for example, \<user\> becomes your_username without the arrow brackets) 
 ## Running the Application
 
 ### Start the frontend
@@ -44,6 +75,12 @@ npm run dev
 cd backend
 npm run dev
 ```
+### Verification
+
+- Open http://localhost:5173
+- Log in using (or create a new account):
+  - admin / admin123
+- You should be able to create and view a bracket
 
 ## Project Structure
 
