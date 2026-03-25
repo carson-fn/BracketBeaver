@@ -12,8 +12,8 @@ CREATE TABLE users (
 );
 
 INSERT INTO users (username, password, role) VALUES
-('alice', '$2a$10$5X1e7OOhqfXzc0O8t.eqLOd4Ov/TmXN9H1dKGXqh2QLN1Y8Z8z6qa', 'organizer'),
-('admin', '$2a$10$1R3Aj3LQ8Y7VYu8/5xGbL.5oX1YnbXlZ5Y5/5pD5V8F0K3K1K2K3K', 'admin');
+('alice', '$2a$10$MQlg9jWGXKYtX.opBRS0CuSmEkGQarD694GNTE1HZ/sxztLYXccBa', 'organizer'),
+('admin', '$2a$10$Xw.UkUsiTZnq76f553.7lOplSlWa0GI1sMpeoahl6jw88Y6JV2R2.', 'admin');
 
 CREATE TABLE tournaments (
     tournamentID SERIAL PRIMARY KEY,
