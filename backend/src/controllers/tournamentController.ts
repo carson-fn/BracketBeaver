@@ -9,6 +9,7 @@ import {
   deleteTournament,
   type CreateTournamentPayload,
 } from "../services/tournamentService.js";
+import { predictMatchOutcome } from "../services/matchPredictionService.js";
 
 const parseTournamentId = (idParam: string): number | null => {
   const parsed = Number(idParam);
@@ -278,5 +279,32 @@ export const deleteTournamentHandler = async (req: Request, res: Response) => {
 
     console.error("Failed to delete tournament:", error);
     return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const predictMatchHandler = async (req: Request, res: Response) => {
+  const tournamentIdParam = req.params.id;
+  const matchIdParam = req.params.matchId;
+
+  const tournamentId = parseTournamentId(tournamentIdParam ?? "");
+  const matchId = parseTournamentId(matchIdParam ?? "");
+
+  if (!tournamentId || !matchId) {
+    return res.status(400).json({ success: false, message: "Invalid route parameters." });
+  }
+
+  try {
+    const prediction = await predictMatchOutcome(tournamentId, matchId);
+    return res.status(200).json({ success: true, prediction });
+  } catch (error) {
+    const status = (error as any)?.status ?? 500;
+    const message = error instanceof Error ? error.message : "Server error";
+
+    if (status === 404 || status === 400 || status === 422) {
+      return res.status(status).json({ success: false, message });
+    }
+
+    console.error("Failed to predict match outcome:", error);
+    return res.status(500).json({ success: false, message: "Failed to generate prediction." });
   }
 };
